@@ -111,7 +111,7 @@ CREATE TABLE health_trends (
 
 ## Phase 4 — Demo & Submit (Days 7–8)
 
-18. Write Priya's script (3 scenes) BEFORE recording
-19. Record video
-20. Kaggle writeup
-21. GitHub cleanup + submit
+18. ✅ Git repository initialized with unified backend/mobile structure
+19. 🚧 Record demo video (Next Step)
+20. 🚧 Write Kaggle writeup
+21. 🚧 Final GitHub push & submit
