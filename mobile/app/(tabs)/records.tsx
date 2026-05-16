@@ -1,9 +1,4 @@
-/**
- * Health Records — Unified view of extracted medical documents.
- * Shows lab reports, prescriptions, and vaccinations extracted by Gemma 4 Vision.
- * Data is stored locally in SQLite — never leaves the device.
- */
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -11,27 +6,24 @@ import {
   ScrollView,
   TouchableOpacity,
   RefreshControl,
+  TextInput,
   Platform,
 } from 'react-native';
-import {
-  Colors,
-  Spacing,
-  FontSize,
-  BorderRadius,
-  Shadows,
-} from '../../constants/theme';
+import { Colors, Spacing, Typography, BorderRadius, Shadows } from '../../constants/theme';
 import { getHealthRecords, type HealthRecordRow } from '../../services/database';
+import { ConnectionBadge } from '../../components/ConnectionBadge';
+import { Search, Plus, FileText, Pill, Syringe } from 'lucide-react-native';
 
-const TYPE_CONFIG: Record<string, { emoji: string; label: string; color: string }> = {
-  lab: { emoji: '🧪', label: 'Lab Report', color: '#8B5CF6' },
-  prescription: { emoji: '💊', label: 'Prescription', color: Colors.primary },
-  vaccination: { emoji: '💉', label: 'Vaccination', color: Colors.safe },
+const TYPE_CONFIG: Record<string, { icon: React.ReactNode; label: string; color: string }> = {
+  lab: { icon: <FileText size={20} color={Colors.primary} />, label: 'Lab Report', color: Colors.primary },
+  prescription: { icon: <Pill size={20} color={Colors.warning} />, label: 'Prescription', color: Colors.warning },
+  vaccination: { icon: <Syringe size={20} color={Colors.success} />, label: 'Vaccination', color: Colors.success },
 };
 
 export default function RecordsScreen() {
   const [records, setRecords] = useState<HealthRecordRow[]>([]);
   const [refreshing, setRefreshing] = useState(false);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     loadRecords();
@@ -52,127 +44,100 @@ export default function RecordsScreen() {
     setRefreshing(false);
   }
 
+  // Mock group records by month
+  const groupedRecords = records.reduce((acc, record) => {
+    const date = new Date(record.created_at);
+    const monthYear = date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    if (!acc[monthYear]) acc[monthYear] = [];
+    acc[monthYear].push(record);
+    return acc;
+  }, {} as Record<string, HealthRecordRow[]>);
+
+  const filteredGroups = Object.keys(groupedRecords).reduce((acc, monthYear) => {
+    const filtered = groupedRecords[monthYear].filter(record => 
+      record.summary.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (TYPE_CONFIG[record.type]?.label || '').toLowerCase().includes(searchQuery.toLowerCase())
+    );
+    if (filtered.length > 0) acc[monthYear] = filtered;
+    return acc;
+  }, {} as Record<string, HealthRecordRow[]>);
+
   function formatDate(timestamp: number): string {
-    return new Date(timestamp).toLocaleDateString('en-IN', {
-      day: 'numeric',
+    return new Date(timestamp).toLocaleDateString('en-US', {
       month: 'short',
-      year: 'numeric',
+      day: 'numeric',
     });
   }
 
-  function toggleExpand(id: string) {
-    setExpandedId(expandedId === id ? null : id);
-  }
+  return (
+    <View style={styles.container}>
+      {/* Header */}
+      <View style={styles.header}>
+        <View style={styles.headerRow}>
+          <ConnectionBadge status="connected" />
+          <TouchableOpacity style={styles.addButton}>
+            <Plus size={16} color={Colors.textPrimary} style={{ marginRight: 4 }} />
+            <Text style={styles.addButtonText}>Add</Text>
+          </TouchableOpacity>
+        </View>
+        <Text style={styles.headerTitle}>Health Records</Text>
+      </View>
 
-  if (records.length === 0) {
-    return (
-      <ScrollView
-        style={styles.container}
-        contentContainerStyle={styles.emptyContainer}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor={Colors.primary}
+      {/* Search Bar */}
+      <View style={styles.searchContainer}>
+        <View style={styles.searchBar}>
+          <Search size={20} color={Colors.textSecondary} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search records..."
+            placeholderTextColor={Colors.textSecondary}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
           />
+        </View>
+      </View>
+
+      <ScrollView
+        style={styles.scrollContainer}
+        contentContainerStyle={styles.content}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} />
         }
       >
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>📋 Health Records</Text>
-          <Text style={styles.headerSubtitle}>
-            Your medical documents — stored locally
-          </Text>
-        </View>
-        <View style={styles.emptyState}>
-          <Text style={styles.emptyEmoji}>📋</Text>
-          <Text style={styles.emptyTitle}>No Records Yet</Text>
-          <Text style={styles.emptyDesc}>
-            Scan a medical document using the Scan tab.{'\n'}
-            Gemma 4 will extract the data and save it here.
-          </Text>
-        </View>
-      </ScrollView>
-    );
-  }
-
-  return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.content}
-      refreshControl={
-        <RefreshControl
-          refreshing={refreshing}
-          onRefresh={onRefresh}
-          tintColor={Colors.primary}
-        />
-      }
-    >
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>📋 Health Records</Text>
-        <Text style={styles.headerSubtitle}>
-          {records.length} record{records.length !== 1 ? 's' : ''} — stored locally
-        </Text>
-      </View>
-
-      {records.map((record) => {
-        const config = TYPE_CONFIG[record.type] || TYPE_CONFIG.lab;
-        const isExpanded = expandedId === record.id;
-        let parsedData: any = null;
-        try {
-          parsedData = JSON.parse(record.extracted_data);
-        } catch {}
-
-        return (
-          <TouchableOpacity
-            key={record.id}
-            style={styles.recordCard}
-            onPress={() => toggleExpand(record.id)}
-            activeOpacity={0.7}
-          >
-            <View style={styles.recordHeader}>
-              <View
-                style={[
-                  styles.typeBadge,
-                  { backgroundColor: config.color + '20' },
-                ]}
-              >
-                <Text style={styles.typeEmoji}>{config.emoji}</Text>
+        {Object.keys(filteredGroups).length === 0 ? (
+          <View style={styles.emptyState}>
+            <FileText size={48} color={Colors.border} style={{ marginBottom: Spacing.md }} />
+            <Text style={styles.emptyTitle}>No Records Found</Text>
+            <Text style={styles.emptySubtitle}>Try adjusting your search or add a new record.</Text>
+          </View>
+        ) : (
+          Object.keys(filteredGroups).map(monthYear => (
+            <View key={monthYear} style={styles.monthGroup}>
+              <View style={styles.monthHeaderRow}>
+                <Text style={styles.monthText}>-- {monthYear} </Text>
+                <View style={styles.monthLine} />
               </View>
-              <View style={styles.recordInfo}>
-                <Text style={styles.recordType}>{config.label}</Text>
-                <Text style={styles.recordDate}>
-                  {formatDate(record.created_at)}
-                </Text>
-              </View>
-              <Text style={styles.expandIcon}>
-                {isExpanded ? '▲' : '▼'}
-              </Text>
+
+              {filteredGroups[monthYear].map(record => {
+                const config = TYPE_CONFIG[record.type] || TYPE_CONFIG.lab;
+                return (
+                  <View key={record.id} style={styles.recordCard}>
+                    <View style={styles.recordIconBox}>
+                      {config.icon}
+                    </View>
+                    <View style={styles.recordDetails}>
+                      <Text style={styles.recordTitle} numberOfLines={1}>{config.label}</Text>
+                      <Text style={styles.recordSummary} numberOfLines={1}>{record.summary}</Text>
+                      <Text style={styles.recordMeta}>Date: {formatDate(record.created_at)}</Text>
+                    </View>
+                  </View>
+                );
+              })}
             </View>
-
-            {/* Summary always visible */}
-            <Text style={styles.recordSummary} numberOfLines={isExpanded ? undefined : 3}>
-              {record.summary}
-            </Text>
-
-            {/* Extracted data (expanded) */}
-            {isExpanded && parsedData && (
-              <View style={styles.dataSection}>
-                <Text style={styles.dataLabel}>🔍 Extracted Data</Text>
-                <Text style={styles.dataContent} selectable>
-                  {JSON.stringify(parsedData, null, 2)}
-                </Text>
-              </View>
-            )}
-          </TouchableOpacity>
-        );
-      })}
-
-      <View style={styles.footer}>
-        <Text style={styles.footerText}>
-          🔒 All records are stored locally on your device
-        </Text>
-      </View>
-    </ScrollView>
+          ))
+        )}
+      </ScrollView>
+    </View>
   );
 }
 
@@ -181,122 +146,140 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.background,
   },
-  content: {
-    paddingHorizontal: Spacing.xxl,
-    paddingTop: 56,
-    paddingBottom: 120,
-  },
-  emptyContainer: {
-    paddingHorizontal: Spacing.xxl,
-    paddingTop: 56,
-    flex: 1,
-  },
   header: {
-    marginBottom: Spacing.xl,
+    paddingTop: 60,
+    paddingHorizontal: Spacing.base,
+    backgroundColor: Colors.surface,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: Spacing.sm,
+  },
+  addButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 6,
+    borderRadius: BorderRadius.full,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    backgroundColor: Colors.surface,
+  },
+  addButtonText: {
+    ...Typography.micro,
+    color: Colors.textPrimary,
+    fontWeight: 'bold',
   },
   headerTitle: {
-    fontSize: FontSize.xxl,
-    fontWeight: '800',
+    ...Typography.h1,
+    color: Colors.textPrimary,
+    paddingBottom: Spacing.sm,
+  },
+  searchContainer: {
+    backgroundColor: Colors.surface,
+    paddingHorizontal: Spacing.base,
+    paddingBottom: Spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  searchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.background,
+    borderRadius: BorderRadius.md,
+    paddingHorizontal: Spacing.md,
+    height: 40,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  searchInput: {
+    flex: 1,
+    marginLeft: Spacing.sm,
+    ...Typography.bodyPrimary,
     color: Colors.textPrimary,
   },
-  headerSubtitle: {
-    fontSize: FontSize.xs,
-    color: Colors.textMuted,
-    marginTop: 4,
+  scrollContainer: {
+    flex: 1,
+  },
+  content: {
+    padding: Spacing.base,
+    paddingBottom: Spacing.huge,
+  },
+  monthGroup: {
+    marginBottom: Spacing.xl,
+  },
+  monthHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: Spacing.md,
+  },
+  monthText: {
+    ...Typography.micro,
+    color: Colors.textSecondary,
+    fontWeight: 'bold',
+  },
+  monthLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: Colors.borderLight,
+    borderStyle: 'dashed',
   },
   recordCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: Colors.surface,
+    padding: Spacing.base,
     borderRadius: BorderRadius.lg,
-    padding: Spacing.lg,
     marginBottom: Spacing.md,
     borderWidth: 1,
     borderColor: Colors.border,
     ...Shadows.sm,
   },
-  recordHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.md,
-    marginBottom: Spacing.sm,
-  },
-  typeBadge: {
+  recordIconBox: {
     width: 40,
     height: 40,
     borderRadius: BorderRadius.md,
+    backgroundColor: Colors.background,
     justifyContent: 'center',
     alignItems: 'center',
+    marginRight: Spacing.md,
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
   },
-  typeEmoji: {
-    fontSize: 20,
-  },
-  recordInfo: {
+  recordDetails: {
     flex: 1,
   },
-  recordType: {
-    fontSize: FontSize.md,
-    fontWeight: '700',
+  recordTitle: {
+    ...Typography.bodyPrimary,
+    fontWeight: 'bold',
     color: Colors.textPrimary,
-  },
-  recordDate: {
-    fontSize: FontSize.xs,
-    color: Colors.textMuted,
-    marginTop: 2,
-  },
-  expandIcon: {
-    fontSize: FontSize.xs,
-    color: Colors.textMuted,
+    marginBottom: 2,
   },
   recordSummary: {
-    fontSize: FontSize.sm,
+    ...Typography.micro,
     color: Colors.textSecondary,
-    lineHeight: 20,
+    marginBottom: 4,
   },
-  dataSection: {
-    marginTop: Spacing.md,
-    padding: Spacing.md,
-    backgroundColor: Colors.surfaceElevated,
-    borderRadius: BorderRadius.md,
-  },
-  dataLabel: {
-    fontSize: FontSize.sm,
-    fontWeight: '700',
-    color: Colors.textPrimary,
-    marginBottom: Spacing.sm,
-  },
-  dataContent: {
-    fontSize: FontSize.xs,
-    color: Colors.textMuted,
-    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
-    lineHeight: 18,
+  recordMeta: {
+    ...Typography.micro,
+    color: Colors.textSecondary,
   },
   emptyState: {
     alignItems: 'center',
     justifyContent: 'center',
-    flex: 1,
-    paddingBottom: 100,
-  },
-  emptyEmoji: {
-    fontSize: 64,
-    marginBottom: Spacing.xl,
+    paddingVertical: Spacing.huge * 2,
   },
   emptyTitle: {
-    fontSize: FontSize.xl,
-    fontWeight: '700',
+    ...Typography.h2,
     color: Colors.textPrimary,
     marginBottom: Spacing.sm,
   },
-  emptyDesc: {
-    fontSize: FontSize.md,
+  emptySubtitle: {
+    ...Typography.bodyPrimary,
     color: Colors.textSecondary,
     textAlign: 'center',
-    lineHeight: 22,
-  },
-  footer: {
-    marginTop: Spacing.xl,
-    alignItems: 'center',
-  },
-  footerText: {
-    fontSize: FontSize.xs,
-    color: Colors.textMuted,
   },
 });
+

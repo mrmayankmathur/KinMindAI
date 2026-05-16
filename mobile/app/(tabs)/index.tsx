@@ -1,363 +1,216 @@
-/**
- * Home Dashboard — Aivaan's landing screen after connection.
- * Shows server status, quick actions, and feature cards.
- * Premium dark UI with glassmorphism cards.
- */
-import { useState, useEffect, useRef } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  Animated,
-  Dimensions,
-  RefreshControl,
-} from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Colors, Spacing, FontSize, BorderRadius, Shadows } from '../../constants/theme';
-import { testConnection, getServerUrl, clearServerUrl } from '../../services/api';
-
-const { width } = Dimensions.get('window');
-
-interface FeatureCard {
-  emoji: string;
-  title: string;
-  description: string;
-  route: string;
-  color: string;
-  gemmaFeature: string; // Which Gemma 4 feature powers this
-}
-
-const FEATURES: FeatureCard[] = [
-  {
-    emoji: '💬',
-    title: 'AI Health Chat',
-    description: 'Talk to your AI health assistant in any language',
-    route: '/(tabs)/chat',
-    color: Colors.primary,
-    gemmaFeature: 'Multilingual + 256K Context',
-  },
-  {
-    emoji: '📄',
-    title: 'Scan Report',
-    description: 'Extract & summarize medical documents instantly',
-    route: '/(tabs)/scan',
-    color: '#8B5CF6',
-    gemmaFeature: 'Multimodal Vision',
-  },
-  {
-    emoji: '🩺',
-    title: 'Symptom Check',
-    description: 'AI-powered triage with risk assessment',
-    route: '/(tabs)/symptoms',
-    color: Colors.accent,
-    gemmaFeature: 'Function Calling + Thinking Mode',
-  },
-  {
-    emoji: '🍛',
-    title: 'Food Analysis',
-    description: 'Snap food photo → calorie & nutrition breakdown',
-    route: '/(tabs)/scan',
-    color: '#22C55E',
-    gemmaFeature: 'Multimodal Vision',
-  },
-];
+import { Colors, Spacing, Typography, BorderRadius, Shadows } from '../../constants/theme';
+import { ConnectionBadge } from '../../components/ConnectionBadge';
+import { TrendCard } from '../../components/TrendCard';
+import { Mic, FileEdit, FileText, MessageSquare, Settings } from 'lucide-react-native';
+import { getUserProfile, getHealthRecords, getHealthTrends } from '../../services/database';
 
 export default function HomeScreen() {
   const router = useRouter();
-  const [serverStatus, setServerStatus] = useState<'checking' | 'online' | 'offline'>('checking');
-  const [serverInfo, setServerInfo] = useState<any>(null);
-  const [refreshing, setRefreshing] = useState(false);
-  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const [userName, setUserName] = useState('User');
+  const [recentRecords, setRecentRecords] = useState<any[]>([]);
+  const [trends, setTrends] = useState<any[]>([]);
 
   useEffect(() => {
-    checkServer();
-    Animated.timing(fadeAnim, {
-      toValue: 1,
-      duration: 600,
-      useNativeDriver: true,
-    }).start();
+    async function loadData() {
+      try {
+        const profile = await getUserProfile();
+        if (profile?.name) {
+          // Get first name
+          setUserName(profile.name.split(' ')[0]);
+        }
+        
+        const records = await getHealthRecords();
+        setRecentRecords(records.slice(0, 3)); // show top 3 recent records
+
+        const bpTrends = await getHealthTrends('Blood Pressure');
+        if (bpTrends.length > 0) {
+          const latest = bpTrends[bpTrends.length - 1];
+          setTrends([{ metric: 'Blood Pressure', value: `${latest.value} ${latest.unit}`, status: 'normal' }]);
+        } else {
+          setTrends([{ metric: 'Blood Pressure', value: '-- / --', status: 'normal' }]);
+        }
+      } catch (error) {
+        console.warn('Could not load data', error);
+      }
+    }
+    loadData();
   }, []);
 
-  async function checkServer() {
-    setServerStatus('checking');
-    const result = await testConnection();
-    setServerStatus(result.connected ? 'online' : 'offline');
-    if (result.serverInfo) setServerInfo(result.serverInfo);
-  }
-
-  async function onRefresh() {
-    setRefreshing(true);
-    await checkServer();
-    setRefreshing(false);
-  }
-
-  async function handleDisconnect() {
-    await clearServerUrl();
-    router.replace('/connect');
-  }
-
-  const statusColor =
-    serverStatus === 'online' ? Colors.online :
-    serverStatus === 'offline' ? Colors.offline :
-    Colors.connecting;
-
-  const statusText =
-    serverStatus === 'online' ? 'Connected — All Local' :
-    serverStatus === 'offline' ? 'Server Offline' :
-    'Checking...';
-
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.contentContainer}
-      refreshControl={
-        <RefreshControl
-          refreshing={refreshing}
-          onRefresh={onRefresh}
-          tintColor={Colors.primary}
-        />
-      }
-    >
-      <Animated.View style={{ opacity: fadeAnim }}>
-        {/* Header */}
-        <View style={styles.header}>
-          <View>
-            <Text style={styles.greeting}>Welcome to</Text>
-            <Text style={styles.appName}>Aivaan</Text>
-          </View>
-          <TouchableOpacity
-            style={styles.settingsButton}
-            onPress={handleDisconnect}
-          >
-            <Text style={styles.settingsEmoji}>⚙️</Text>
+    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      {/* Header */}
+      <View style={styles.header}>
+        <ConnectionBadge status="connected" />
+        <View style={styles.headerRight}>
+          <TouchableOpacity style={styles.iconButton}>
+            <Text style={styles.avatarText}>{userName.charAt(0)}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.iconButton}>
+            <Settings size={20} color={Colors.textPrimary} />
           </TouchableOpacity>
         </View>
+      </View>
 
-        {/* Server Status Card */}
-        <View style={styles.statusCard}>
-          <View style={styles.statusRow}>
-            <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
-            <Text style={[styles.statusText, { color: statusColor }]}>
-              {statusText}
-            </Text>
-          </View>
-          {serverInfo && (
-            <View style={styles.serverDetails}>
-              <Text style={styles.serverDetail}>
-                🧠 Model: {serverInfo.model || 'gemma4:4b'}
-              </Text>
-              <Text style={styles.serverDetail}>
-                🔒 {serverInfo.privacy || 'All processing local'}
-              </Text>
+      {/* Greeting */}
+      <View style={styles.greetingSection}>
+        <Text style={styles.greetingText}>Good Morning, {userName}.</Text>
+        <Text style={styles.subGreetingText}>How are you feeling today?</Text>
+      </View>
+
+      {/* Quick Actions */}
+      <View style={styles.quickActions}>
+        <TouchableOpacity 
+          style={styles.actionButton}
+          onPress={() => router.push('/(tabs)/chat')}
+        >
+          <Mic size={20} color={Colors.primary} />
+          <Text style={styles.actionText}>Quick Chat</Text>
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={styles.actionButton}
+          onPress={() => router.push('/(tabs)/symptoms')}
+        >
+          <FileEdit size={20} color={Colors.primary} />
+          <Text style={styles.actionText}>Log Symptom</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Recent Trends */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Recent Trends</Text>
+        {trends.map((trend, i) => (
+          <TrendCard key={i} metric={trend.metric} value={trend.value} status={trend.status} />
+        ))}
+      </View>
+
+      {/* Recent Activity */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Recent Activity</Text>
+        <View style={styles.activityList}>
+          {recentRecords.length > 0 ? (
+            recentRecords.map((record) => (
+              <View key={record.id} style={styles.activityItem}>
+                <FileText size={20} color={Colors.textSecondary} />
+                <Text style={styles.activityText} numberOfLines={1}>
+                  {record.type === 'lab' ? 'Scanned Lab Report' : record.type === 'nutrition' ? 'Analyzed Food' : 'Health Record'}
+                  <Text style={styles.timeText}> ({new Date(record.created_at).toLocaleDateString()})</Text>
+                </Text>
+              </View>
+            ))
+          ) : (
+            <View style={styles.activityItem}>
+              <Text style={styles.activityText}>No recent activity</Text>
             </View>
           )}
         </View>
-
-        {/* Privacy Banner */}
-        <View style={styles.privacyBanner}>
-          <Text style={styles.privacyEmoji}>🛡️</Text>
-          <View style={styles.privacyTextContainer}>
-            <Text style={styles.privacyTitle}>Privacy First</Text>
-            <Text style={styles.privacyDesc}>
-              Your health data never leaves your device. All AI runs locally via Gemma 4.
-            </Text>
-          </View>
-        </View>
-
-        {/* Feature Cards */}
-        <Text style={styles.sectionTitle}>What can Aivaan do?</Text>
-        <View style={styles.cardsGrid}>
-          {FEATURES.map((feature, index) => (
-            <TouchableOpacity
-              key={index}
-              style={styles.featureCard}
-              onPress={() => router.push(feature.route as any)}
-              activeOpacity={0.7}
-            >
-              <View style={[styles.featureIconBg, { backgroundColor: feature.color + '20' }]}>
-                <Text style={styles.featureEmoji}>{feature.emoji}</Text>
-              </View>
-              <Text style={styles.featureTitle}>{feature.title}</Text>
-              <Text style={styles.featureDesc}>{feature.description}</Text>
-              <View style={styles.gemmaTag}>
-                <Text style={styles.gemmaTagText}>⚡ {feature.gemmaFeature}</Text>
-              </View>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        {/* Tech Footer */}
-        <View style={styles.techFooter}>
-          <Text style={styles.techText}>
-            Powered by Gemma 4 via Ollama • 100% Offline
-          </Text>
-        </View>
-      </Animated.View>
+      </View>
     </ScrollView>
   );
 }
-
-const CARD_WIDTH = (width - Spacing.xxl * 2 - Spacing.md) / 2;
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.background,
   },
-  contentContainer: {
-    paddingHorizontal: Spacing.xxl,
+  content: {
+    padding: Spacing.base,
     paddingTop: 60,
-    paddingBottom: 100,
+    paddingBottom: 40,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: Spacing.xxl,
-  },
-  greeting: {
-    fontSize: FontSize.md,
-    color: Colors.textSecondary,
-  },
-  appName: {
-    fontSize: FontSize.display,
-    fontWeight: '800',
-    color: Colors.textPrimary,
-    letterSpacing: 0.5,
-  },
-  settingsButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: Colors.surface,
-    justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: Colors.border,
+    marginBottom: Spacing.xl,
   },
-  settingsEmoji: {
-    fontSize: 20,
-  },
-  statusCard: {
-    backgroundColor: Colors.surface,
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.lg,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    marginBottom: Spacing.lg,
-  },
-  statusRow: {
+  headerRight: {
     flexDirection: 'row',
-    alignItems: 'center',
     gap: Spacing.sm,
   },
-  statusDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-  },
-  statusText: {
-    fontSize: FontSize.md,
-    fontWeight: '600',
-  },
-  serverDetails: {
-    marginTop: Spacing.md,
-    gap: Spacing.xs,
-  },
-  serverDetail: {
-    fontSize: FontSize.sm,
-    color: Colors.textSecondary,
-  },
-  privacyBanner: {
-    flexDirection: 'row',
-    backgroundColor: Colors.primaryMuted,
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.lg,
-    marginBottom: Spacing.xxl,
-    gap: Spacing.md,
-    borderWidth: 1,
-    borderColor: Colors.primary + '30',
-  },
-  privacyEmoji: {
-    fontSize: 28,
-  },
-  privacyTextContainer: {
-    flex: 1,
-  },
-  privacyTitle: {
-    fontSize: FontSize.md,
-    fontWeight: '700',
-    color: Colors.primary,
-  },
-  privacyDesc: {
-    fontSize: FontSize.sm,
-    color: Colors.textSecondary,
-    marginTop: Spacing.xs,
-    lineHeight: 20,
-  },
-  sectionTitle: {
-    fontSize: FontSize.xl,
-    fontWeight: '700',
-    color: Colors.textPrimary,
-    marginBottom: Spacing.lg,
-  },
-  cardsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Spacing.md,
-  },
-  featureCard: {
-    width: CARD_WIDTH,
+  iconButton: {
+    width: 36,
+    height: 36,
+    borderRadius: BorderRadius.full,
     backgroundColor: Colors.surface,
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.lg,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    ...Shadows.sm,
-  },
-  featureIconBg: {
-    width: 48,
-    height: 48,
-    borderRadius: BorderRadius.md,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: Spacing.md,
+    borderWidth: 1,
+    borderColor: Colors.border,
   },
-  featureEmoji: {
-    fontSize: 24,
+  avatarText: {
+    ...Typography.bodyPrimary,
+    fontWeight: 'bold',
+    color: Colors.primary,
   },
-  featureTitle: {
-    fontSize: FontSize.md,
-    fontWeight: '700',
+  greetingSection: {
+    marginBottom: Spacing.xl,
+  },
+  greetingText: {
+    ...Typography.h1,
     color: Colors.textPrimary,
     marginBottom: Spacing.xs,
   },
-  featureDesc: {
-    fontSize: FontSize.xs,
+  subGreetingText: {
+    ...Typography.bodyPrimary,
     color: Colors.textSecondary,
-    lineHeight: 16,
-    marginBottom: Spacing.sm,
   },
-  gemmaTag: {
-    backgroundColor: Colors.accentMuted,
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 3,
-    borderRadius: BorderRadius.sm,
-    alignSelf: 'flex-start',
+  quickActions: {
+    flexDirection: 'row',
+    gap: Spacing.md,
+    marginBottom: Spacing.xxl,
   },
-  gemmaTagText: {
-    fontSize: 9,
-    color: Colors.accent,
-    fontWeight: '600',
-  },
-  techFooter: {
-    marginTop: Spacing.xxxl,
+  actionButton: {
+    flex: 1,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.surface,
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.sm,
+    borderRadius: BorderRadius.lg,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    gap: Spacing.sm,
+    ...Shadows.sm,
   },
-  techText: {
-    fontSize: FontSize.xs,
-    color: Colors.textMuted,
+  actionText: {
+    ...Typography.bodyPrimary,
+    fontWeight: '500',
+    color: Colors.textPrimary,
+  },
+  section: {
+    marginBottom: Spacing.xxl,
+  },
+  sectionTitle: {
+    ...Typography.h2,
+    color: Colors.textPrimary,
+    marginBottom: Spacing.md,
+  },
+  activityList: {
+    backgroundColor: Colors.surface,
+    borderRadius: BorderRadius.lg,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    overflow: 'hidden',
+  },
+  activityItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: Spacing.base,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.borderLight,
+    gap: Spacing.md,
+  },
+  activityText: {
+    ...Typography.bodyPrimary,
+    color: Colors.textPrimary,
+  },
+  timeText: {
+    color: Colors.textSecondary,
+    fontSize: 14,
   },
 });

@@ -188,7 +188,7 @@ export async function extractDocument(
 export async function checkSymptoms(
   messages: Array<{ role: string; content: string }>,
   language: string = 'en'
-): Promise<{ response: string; urgency: string }> {
+): Promise<{ response: string; urgency: string; reasoning?: string; extracted_data?: any }> {
   const serverUrl = await getServerUrl();
   if (!serverUrl) throw new Error('Not connected to server');
 

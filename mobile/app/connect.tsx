@@ -19,7 +19,7 @@ import {
   Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Colors, Spacing, FontSize, BorderRadius, Shadows } from '../constants/theme';
+import { Colors, Spacing, Typography, BorderRadius, Shadows } from '../constants/theme';
 import {
   setServerUrl,
   testConnection,
@@ -108,12 +108,12 @@ export default function ConnectScreen() {
 
   const statusColor =
     status === 'connected'
-      ? Colors.safe
+      ? Colors.success
       : status === 'failed'
       ? Colors.emergency
       : status === 'testing'
       ? Colors.connecting
-      : Colors.textMuted;
+      : Colors.textSecondary;
 
   return (
     <KeyboardAvoidingView
@@ -159,7 +159,7 @@ export default function ConnectScreen() {
             <TextInput
               style={styles.input}
               placeholder="192.168.1.45"
-              placeholderTextColor={Colors.textMuted}
+              placeholderTextColor={Colors.textSecondary}
               value={manualIp}
               onChangeText={setManualIp}
               keyboardType="url"
@@ -215,7 +215,7 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: 50,
-    backgroundColor: Colors.primaryMuted,
+    backgroundColor: Colors.secondary,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
@@ -225,19 +225,18 @@ const styles = StyleSheet.create({
     fontSize: 44,
   },
   title: {
-    fontSize: FontSize.xxxl,
-    fontWeight: '800',
+    ...Typography.h1,
+    fontSize: 32, // overriding h1 for a larger title here
     color: Colors.textPrimary,
     letterSpacing: 1,
   },
   subtitle: {
-    fontSize: FontSize.lg,
+    ...Typography.h2,
     color: Colors.primary,
     marginTop: Spacing.xs,
-    fontWeight: '600',
   },
   description: {
-    fontSize: FontSize.md,
+    ...Typography.bodyPrimary,
     color: Colors.textSecondary,
     textAlign: 'center',
     marginTop: Spacing.lg,
@@ -261,7 +260,7 @@ const styles = StyleSheet.create({
     marginRight: Spacing.sm,
   },
   statusText: {
-    fontSize: FontSize.sm,
+    ...Typography.bodySecondary,
     fontWeight: '500',
     flex: 1,
   },
@@ -270,7 +269,7 @@ const styles = StyleSheet.create({
     marginTop: Spacing.xxl,
   },
   inputLabel: {
-    fontSize: FontSize.sm,
+    ...Typography.bodySecondary,
     color: Colors.textSecondary,
     marginBottom: Spacing.sm,
     fontWeight: '600',
@@ -288,7 +287,7 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.md,
     paddingHorizontal: Spacing.lg,
     color: Colors.textPrimary,
-    fontSize: FontSize.lg,
+    ...Typography.bodyPrimary,
     borderWidth: 1,
     borderColor: Colors.border,
     fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
@@ -306,32 +305,33 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   connectButtonText: {
-    color: Colors.textInverse,
-    fontSize: FontSize.md,
+    color: '#FFFFFF',
+    ...Typography.bodyPrimary,
     fontWeight: '700',
   },
   hint: {
-    fontSize: FontSize.xs,
-    color: Colors.textMuted,
+    ...Typography.micro,
+    color: Colors.textSecondary,
     marginTop: Spacing.md,
     lineHeight: 18,
   },
   privacyBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.safeMuted,
+    backgroundColor: Colors.success + '15',
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.md,
     borderRadius: BorderRadius.full,
-    marginTop: Spacing.xxxl,
+    marginTop: Spacing.xxl,
     gap: Spacing.sm,
   },
   privacyIcon: {
     fontSize: 16,
   },
   privacyText: {
-    fontSize: FontSize.xs,
-    color: Colors.safe,
+    ...Typography.micro,
+    color: Colors.success,
     fontWeight: '500',
   },
 });
+

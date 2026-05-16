@@ -1,82 +1,57 @@
 /**
- * Aivaan Design System
- * Premium, modern health app theme with dark mode support.
- * Colors inspired by medical/health aesthetics — calming teals + warm accents.
+ * Global Design System
+ * 
+ * Color Palette (Health & Trust Focus)
+ * Primary Action: #0066FF (Trust Blue)
+ * Secondary Action: #E5F0FF (Light Blue)
+ * Success/Health: #10B981 (Emerald Green)
+ * Warning/Risk: #F59E0B (Amber) & #EF4444 (Red)
+ * Background (Light): #F9FAFB (Off-white)
+ * Surface (Light): #FFFFFF (White)
+ * Text: #111827 (Dark Gray/Black) for primary, #6B7280 (Medium Gray)
  */
 
 export const Colors = {
-  // Primary palette — Calming teal/cyan (trust, health, care)
-  primary: '#0EA5A0',
-  primaryLight: '#14B8B3',
-  primaryDark: '#0D8E89',
-  primaryMuted: 'rgba(14, 165, 160, 0.15)',
-
-  // Accent — Warm amber for CTAs and highlights
-  accent: '#F59E0B',
-  accentLight: '#FBBF24',
-  accentMuted: 'rgba(245, 158, 11, 0.15)',
-
-  // Urgency colors (symptom checker)
+  primary: '#0066FF',
+  secondary: '#E5F0FF',
+  success: '#10B981',
+  warning: '#F59E0B',
   emergency: '#EF4444',
-  emergencyMuted: 'rgba(239, 68, 68, 0.15)',
-  urgent: '#F97316',
-  urgentMuted: 'rgba(249, 115, 22, 0.15)',
-  safe: '#22C55E',
-  safeMuted: 'rgba(34, 197, 94, 0.15)',
-
-  // Dark theme (primary)
-  background: '#0F1419',
-  surface: '#1A1F2E',
-  surfaceElevated: '#232A3B',
-  surfaceBright: '#2D3548',
-
-  // Text
-  textPrimary: '#F1F5F9',
-  textSecondary: '#94A3B8',
-  textMuted: '#64748B',
-  textInverse: '#0F1419',
-
-  // Borders
-  border: '#2D3548',
-  borderLight: '#384152',
-
-  // Status
-  online: '#22C55E',
+  background: '#F9FAFB',
+  surface: '#FFFFFF',
+  textPrimary: '#111827',
+  textSecondary: '#6B7280',
+  border: '#E5E7EB',
+  borderLight: '#F3F4F6',
+  online: '#10B981', // Offline/Local AI badge (Emerald Green)
   offline: '#EF4444',
   connecting: '#F59E0B',
+};
 
-  // Glassmorphism
-  glass: 'rgba(26, 31, 46, 0.8)',
-  glassBorder: 'rgba(255, 255, 255, 0.08)',
+export const Typography = {
+  h1: { fontSize: 24, fontWeight: 'bold' as const },
+  h2: { fontSize: 18, fontWeight: '600' as const },
+  bodyPrimary: { fontSize: 16, fontWeight: 'normal' as const },
+  bodySecondary: { fontSize: 14, fontWeight: 'normal' as const },
+  micro: { fontSize: 12, fontWeight: '500' as const },
 };
 
 export const Spacing = {
   xs: 4,
   sm: 8,
   md: 12,
-  lg: 16,
-  xl: 20,
-  xxl: 24,
-  xxxl: 32,
+  base: 16,
+  lg: 20,
+  xl: 24,
+  xxl: 32,
   huge: 48,
 };
 
-export const FontSize = {
-  xs: 11,
-  sm: 13,
-  md: 15,
-  lg: 17,
-  xl: 20,
-  xxl: 24,
-  xxxl: 32,
-  display: 40,
-};
-
 export const BorderRadius = {
-  sm: 8,
-  md: 12,
-  lg: 16,
-  xl: 20,
+  sm: 4,
+  md: 8,
+  lg: 12,
+  xl: 16,
   xxl: 24,
   full: 999,
 };
@@ -84,30 +59,16 @@ export const BorderRadius = {
 export const Shadows = {
   sm: {
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
     elevation: 2,
   },
   md: {
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
     elevation: 4,
   },
-  lg: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.25,
-    shadowRadius: 16,
-    elevation: 8,
-  },
-  glow: (color: string) => ({
-    shadowColor: color,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
-    elevation: 6,
-  }),
 };

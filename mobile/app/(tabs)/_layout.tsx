@@ -1,27 +1,16 @@
 /**
  * Aivaan — Tab Navigation Layout
- * Main app navigation with 4 core tabs:
+ * Main app navigation with 5 core tabs:
  * 1. Home (Dashboard)
- * 2. Chat (AI Health Assistant)
+ * 2. Symptoms (Symptom Checker)
  * 3. Scan (Document/Food Scanner)
- * 4. Symptoms (Symptom Checker)
+ * 4. Chat (AI Health Assistant)
+ * 5. Records
  */
 import { Tabs } from 'expo-router';
 import { View, StyleSheet, Platform } from 'react-native';
-import { Colors, Spacing, FontSize, BorderRadius } from '../../constants/theme';
-
-// Simple emoji-based tab icons (no external icon library needed)
-function TabIcon({ emoji, focused }: { emoji: string; focused: boolean }) {
-  return (
-    <View style={[styles.iconWrap, focused && styles.iconWrapActive]}>
-      <View style={styles.emojiContainer}>
-        <View>
-          {/* Using Text from react-native directly */}
-        </View>
-      </View>
-    </View>
-  );
-}
+import { Home, Stethoscope, Camera, MessageSquare, ClipboardList } from 'lucide-react-native';
+import { Colors, Spacing, Typography, BorderRadius } from '../../constants/theme';
 
 export default function TabLayout() {
   return (
@@ -30,7 +19,7 @@ export default function TabLayout() {
         headerShown: false,
         tabBarStyle: styles.tabBar,
         tabBarActiveTintColor: Colors.primary,
-        tabBarInactiveTintColor: Colors.textMuted,
+        tabBarInactiveTintColor: Colors.textSecondary,
         tabBarLabelStyle: styles.tabLabel,
         tabBarItemStyle: styles.tabItem,
       }}
@@ -39,37 +28,9 @@ export default function TabLayout() {
         name="index"
         options={{
           title: 'Home',
-          tabBarIcon: ({ focused }) => (
+          tabBarIcon: ({ focused, color }) => (
             <View style={[styles.iconWrap, focused && styles.iconWrapActive]}>
-              <View style={styles.emojiBox}>
-                <EmojiText emoji="🏠" />
-              </View>
-            </View>
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="chat"
-        options={{
-          title: 'Chat',
-          tabBarIcon: ({ focused }) => (
-            <View style={[styles.iconWrap, focused && styles.iconWrapActive]}>
-              <View style={styles.emojiBox}>
-                <EmojiText emoji="💬" />
-              </View>
-            </View>
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="scan"
-        options={{
-          title: 'Scan',
-          tabBarIcon: ({ focused }) => (
-            <View style={[styles.iconWrap, focused && styles.iconWrapActive]}>
-              <View style={styles.emojiBox}>
-                <EmojiText emoji="📄" />
-              </View>
+              <Home color={color} size={24} />
             </View>
           ),
         }}
@@ -78,11 +39,31 @@ export default function TabLayout() {
         name="symptoms"
         options={{
           title: 'Symptoms',
-          tabBarIcon: ({ focused }) => (
+          tabBarIcon: ({ focused, color }) => (
             <View style={[styles.iconWrap, focused && styles.iconWrapActive]}>
-              <View style={styles.emojiBox}>
-                <EmojiText emoji="🩺" />
-              </View>
+              <Stethoscope color={color} size={24} />
+            </View>
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="scan"
+        options={{
+          title: 'Scan',
+          tabBarIcon: ({ focused, color }) => (
+            <View style={[styles.iconWrapCenter, focused && styles.iconWrapCenterActive]}>
+              <Camera color={focused ? Colors.surface : Colors.primary} size={28} />
+            </View>
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="chat"
+        options={{
+          title: 'Chat',
+          tabBarIcon: ({ focused, color }) => (
+            <View style={[styles.iconWrap, focused && styles.iconWrapActive]}>
+              <MessageSquare color={color} size={24} />
             </View>
           ),
         }}
@@ -91,23 +72,15 @@ export default function TabLayout() {
         name="records"
         options={{
           title: 'Records',
-          tabBarIcon: ({ focused }) => (
+          tabBarIcon: ({ focused, color }) => (
             <View style={[styles.iconWrap, focused && styles.iconWrapActive]}>
-              <View style={styles.emojiBox}>
-                <EmojiText emoji="📋" />
-              </View>
+              <ClipboardList color={color} size={24} />
             </View>
           ),
         }}
       />
     </Tabs>
   );
-}
-
-// Helper component for emoji rendering
-import { Text } from 'react-native';
-function EmojiText({ emoji }: { emoji: string }) {
-  return <Text style={{ fontSize: 22 }}>{emoji}</Text>;
 }
 
 const styles = StyleSheet.create({
@@ -117,32 +90,36 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     height: Platform.OS === 'ios' ? 88 : 68,
     paddingTop: Spacing.sm,
-    paddingBottom: Platform.OS === 'ios' ? Spacing.xxl : Spacing.sm,
+    paddingBottom: Platform.OS === 'ios' ? Spacing.xl : Spacing.sm,
     elevation: 0,
   },
   tabLabel: {
-    fontSize: FontSize.xs,
-    fontWeight: '600',
+    fontSize: Typography.micro.fontSize,
+    fontWeight: Typography.micro.fontWeight,
     marginTop: 2,
   },
   tabItem: {
     paddingTop: 4,
   },
   iconWrap: {
-    padding: 4,
-    borderRadius: BorderRadius.sm,
+    padding: 6,
+    borderRadius: BorderRadius.md,
   },
   iconWrapActive: {
-    backgroundColor: Colors.primaryMuted,
+    backgroundColor: Colors.secondary,
   },
-  emojiBox: {
-    width: 28,
-    height: 28,
-    justifyContent: 'center',
-    alignItems: 'center',
+  iconWrapCenter: {
+    padding: 12,
+    borderRadius: BorderRadius.full,
+    backgroundColor: Colors.secondary,
+    transform: [{ translateY: -10 }],
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
   },
-  emojiContainer: {
-    justifyContent: 'center',
-    alignItems: 'center',
+  iconWrapCenterActive: {
+    backgroundColor: Colors.primary,
   },
 });

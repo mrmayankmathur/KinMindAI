@@ -1,256 +1,163 @@
-/**
- * Document Scanner — Medical report extraction using Gemma 4 Vision.
- * Snap a photo or upload an image of a medical document.
- * Gemma 4 extracts structured data + generates plain-language summary.
- * Summary can be read aloud via TTS in the user's language.
- */
-import { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
-  Image,
-  ScrollView,
   ActivityIndicator,
-  Alert,
   Platform,
 } from 'react-native';
-import * as ImagePicker from 'expo-image-picker';
-import { Colors, Spacing, FontSize, BorderRadius, Shadows } from '../../constants/theme';
-import { extractDocument } from '../../services/api';
-import { speak, stop, getIsSpeaking } from '../../services/speech';
+import { Camera, CameraView, useCameraPermissions } from 'expo-camera';
+import { useRouter } from 'expo-router';
+import { X, Zap, ZapOff, Circle } from 'lucide-react-native';
+import { Colors, Spacing, Typography, BorderRadius, Shadows } from '../../constants/theme';
+import { extractDocument, analyzeFood } from '../../services/api';
 import { saveHealthRecord } from '../../services/database';
 
-interface ExtractionResult {
-  extracted_data: any;
-  summary: string;
-  language: string;
-}
-
-const LANGUAGES = [
-  { code: 'en', label: 'English' },
-  { code: 'hi', label: 'हिंदी' },
-  { code: 'ta', label: 'தமிழ்' },
-];
-
 export default function ScanScreen() {
-  const [imageUri, setImageUri] = useState<string | null>(null);
-  const [result, setResult] = useState<ExtractionResult | null>(null);
+  const router = useRouter();
+  const [permission, requestPermission] = useCameraPermissions();
+  const [flash, setFlash] = useState<boolean>(false);
+  const [mode, setMode] = useState<'document' | 'food'>('document');
   const [isProcessing, setIsProcessing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [selectedLang, setSelectedLang] = useState('en');
-  const [isSpeaking, setIsSpeaking] = useState(false);
+  const cameraRef = useRef<CameraView>(null);
 
-  async function pickImage(useCamera: boolean) {
-    try {
-      const permissionResult = useCamera
-        ? await ImagePicker.requestCameraPermissionsAsync()
-        : await ImagePicker.requestMediaLibraryPermissionsAsync();
-
-      if (!permissionResult.granted) {
-        Alert.alert('Permission needed', 'Please grant camera/gallery access');
-        return;
-      }
-
-      const pickerResult = useCamera
-        ? await ImagePicker.launchCameraAsync({
-            mediaTypes: ['images'],
-            quality: 0.8,
-          })
-        : await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ['images'],
-            quality: 0.8,
-          });
-
-      if (!pickerResult.canceled && pickerResult.assets[0]) {
-        setImageUri(pickerResult.assets[0].uri);
-        setResult(null);
-        setError(null);
-      }
-    } catch (e: any) {
-      setError(e.message);
-    }
+  if (!permission) {
+    // Camera permissions are still loading.
+    return <View style={styles.container} />;
   }
 
-  async function handleExtract() {
-    if (!imageUri) return;
+  if (!permission.granted) {
+    // Camera permissions are not granted yet.
+    return (
+      <View style={styles.permissionContainer}>
+        <Text style={styles.permissionText}>We need your permission to show the camera</Text>
+        <TouchableOpacity style={styles.permissionButton} onPress={requestPermission}>
+          <Text style={styles.permissionButtonText}>Grant Permission</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  const handleCapture = async () => {
+    if (!cameraRef.current || isProcessing) return;
 
     setIsProcessing(true);
-    setError(null);
-
     try {
-      const data = await extractDocument(imageUri, selectedLang);
-      setResult({ ...data, language: selectedLang });
-
-      // Save to SQLite for Health Records tab
-      await saveHealthRecord({
-        id: Date.now().toString(),
-        type: 'lab',
-        extractedData: data.extracted_data,
-        summary: data.summary,
+      const photo = await cameraRef.current.takePictureAsync({
+        quality: 0.8,
+        base64: true,
       });
-    } catch (e: any) {
-      setError(e.message || 'Failed to extract document');
+
+      if (photo?.uri) {
+        const lang = 'en'; // default for now
+        let summaryText = '';
+        let extractedJSON = null;
+
+        if (mode === 'document') {
+          const data = await extractDocument(photo.uri, lang);
+          summaryText = data.summary;
+          extractedJSON = data.extracted_data;
+        } else {
+          const data = await analyzeFood(photo.uri);
+          summaryText = data.nutrition?.summary || 'Food analyzed successfully.';
+          extractedJSON = data.nutrition;
+        }
+        
+        await saveHealthRecord({
+          id: Date.now().toString(),
+          type: mode === 'document' ? 'lab' : 'nutrition',
+          extractedData: extractedJSON,
+          summary: summaryText,
+        });
+
+        // Navigate to records or show a success modal here
+        router.push('/(tabs)/records');
+      }
+    } catch (error) {
+      console.warn("Capture failed", error);
     } finally {
       setIsProcessing(false);
     }
-  }
-
-  function handleReadAloud() {
-    if (!result?.summary) return;
-
-    if (getIsSpeaking()) {
-      stop();
-      setIsSpeaking(false);
-      return;
-    }
-
-    setIsSpeaking(true);
-    speak(result.summary, selectedLang).then(() => {
-      // Polling or we can just rely on the fact that isSpeaking becomes false later.
-      // But we need a way to notify UI. For now, we set true.
-      // In a real app we'd use a context or event emitter.
-    }).catch(() => setIsSpeaking(false));
-  }
+  };
 
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.content}
-    >
+    <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>📄 Document Scanner</Text>
-        <Text style={styles.headerSubtitle}>
-          Gemma 4 Vision • Offline Extraction
-        </Text>
+        <TouchableOpacity onPress={() => router.push('/(tabs)')} style={styles.iconButton}>
+          <X size={24} color={Colors.textPrimary} />
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => setFlash(!flash)} style={styles.iconButton}>
+          {flash ? (
+            <Zap size={24} color={Colors.primary} fill={Colors.primary} />
+          ) : (
+            <ZapOff size={24} color={Colors.textPrimary} />
+          )}
+        </TouchableOpacity>
       </View>
 
-      {/* Language Selection */}
-      <View style={styles.langRow}>
-        {LANGUAGES.map((lang) => (
-          <TouchableOpacity
-            key={lang.code}
-            style={[
-              styles.langButton,
-              selectedLang === lang.code && styles.langButtonActive,
-            ]}
-            onPress={() => setSelectedLang(lang.code)}
+      {/* Camera Viewfinder */}
+      <View style={styles.cameraContainer}>
+        <CameraView 
+          ref={cameraRef}
+          style={styles.camera} 
+          facing="back"
+          enableTorch={flash}
+        >
+          <View style={styles.viewfinderOverlay}>
+            <View style={styles.viewfinderBox} />
+            <Text style={styles.viewfinderText}>
+              Align {mode === 'document' ? 'document' : 'food'} here
+            </Text>
+          </View>
+        </CameraView>
+      </View>
+
+      {/* Controls */}
+      <View style={styles.controlsContainer}>
+        {/* Toggle Mode */}
+        <View style={styles.toggleRow}>
+          <TouchableOpacity 
+            style={[styles.toggleButton, mode === 'document' && styles.toggleButtonActive]}
+            onPress={() => setMode('document')}
           >
-            <Text
-              style={[
-                styles.langText,
-                selectedLang === lang.code && styles.langTextActive,
-              ]}
-            >
-              {lang.label}
+            <Text style={[styles.toggleText, mode === 'document' && styles.toggleTextActive]}>
+              Document
             </Text>
           </TouchableOpacity>
-        ))}
-      </View>
+          <TouchableOpacity 
+            style={[styles.toggleButton, mode === 'food' && styles.toggleButtonActive]}
+            onPress={() => setMode('food')}
+          >
+            <Text style={[styles.toggleText, mode === 'food' && styles.toggleTextActive]}>
+              Food
+            </Text>
+          </TouchableOpacity>
+        </View>
 
-      {/* Image Picker Buttons */}
-      <View style={styles.pickerRow}>
-        <TouchableOpacity
-          style={styles.pickerButton}
-          onPress={() => pickImage(true)}
-        >
-          <Text style={styles.pickerEmoji}>📸</Text>
-          <Text style={styles.pickerLabel}>Camera</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.pickerButton}
-          onPress={() => pickImage(false)}
-        >
-          <Text style={styles.pickerEmoji}>🖼️</Text>
-          <Text style={styles.pickerLabel}>Gallery</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Image Preview */}
-      {imageUri && (
-        <View style={styles.previewContainer}>
-          <Image source={{ uri: imageUri }} style={styles.previewImage} />
-          <TouchableOpacity
-            style={[
-              styles.extractButton,
-              isProcessing && styles.extractButtonDisabled,
-            ]}
-            onPress={handleExtract}
+        {/* Capture Button */}
+        <View style={styles.captureContainer}>
+          <TouchableOpacity 
+            style={[styles.captureButton, isProcessing && styles.captureButtonDisabled]}
+            onPress={handleCapture}
             disabled={isProcessing}
           >
             {isProcessing ? (
-              <View style={styles.processingRow}>
-                <ActivityIndicator size="small" color="#FFF" />
-                <Text style={styles.extractButtonText}>
-                  Gemma 4 analyzing...
-                </Text>
-              </View>
+              <ActivityIndicator size="large" color={Colors.surface} />
             ) : (
-              <Text style={styles.extractButtonText}>
-                🧠 Extract with Gemma 4
-              </Text>
+              <Circle size={64} color={Colors.emergency} fill={Colors.emergency} />
             )}
           </TouchableOpacity>
         </View>
-      )}
 
-      {/* Error */}
-      {error && (
-        <View style={styles.errorBox}>
-          <Text style={styles.errorText}>⚠️ {error}</Text>
+        {/* Privacy Note */}
+        <View style={styles.privacyNote}>
+          <Text style={styles.privacyTextPrimary}>AI will extract data locally.</Text>
+          <Text style={styles.privacyTextSecondary}>Photos never leave your network.</Text>
         </View>
-      )}
-
-      {/* Results */}
-      {result && (
-        <View style={styles.resultSection}>
-          {/* Summary Card */}
-          <View style={styles.summaryCard}>
-            <View style={styles.summaryHeader}>
-              <Text style={styles.summaryTitle}>📋 Summary</Text>
-              <TouchableOpacity
-                style={[
-                  styles.readAloudButton,
-                  isSpeaking && styles.readAloudButtonActive,
-                ]}
-                onPress={handleReadAloud}
-              >
-                <Text style={styles.readAloudText}>
-                  {isSpeaking ? '⏹ Stop' : '🔊 Read Aloud'}
-                </Text>
-              </TouchableOpacity>
-            </View>
-            <Text style={styles.summaryContent} selectable>
-              {result.summary}
-            </Text>
-          </View>
-
-          {/* Raw Extracted Data */}
-          {result.extracted_data && (
-            <View style={styles.dataCard}>
-              <Text style={styles.dataTitle}>🔍 Extracted Data</Text>
-              <Text style={styles.dataContent} selectable>
-                {JSON.stringify(result.extracted_data, null, 2)}
-              </Text>
-            </View>
-          )}
-        </View>
-      )}
-
-      {/* Empty State */}
-      {!imageUri && (
-        <View style={styles.emptyState}>
-          <Text style={styles.emptyEmoji}>📄</Text>
-          <Text style={styles.emptyTitle}>Scan a Medical Document</Text>
-          <Text style={styles.emptyDesc}>
-            Take a photo of a lab report, prescription, or medical record.
-            {'\n'}Gemma 4 will extract and summarize it in your language.
-          </Text>
-        </View>
-      )}
-    </ScrollView>
+      </View>
+    </View>
   );
 }
 
@@ -259,190 +166,129 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.background,
   },
-  content: {
-    paddingHorizontal: Spacing.xxl,
-    paddingTop: 56,
-    paddingBottom: 120,
-  },
-  header: {
-    marginBottom: Spacing.xl,
-  },
-  headerTitle: {
-    fontSize: FontSize.xxl,
-    fontWeight: '800',
-    color: Colors.textPrimary,
-  },
-  headerSubtitle: {
-    fontSize: FontSize.xs,
-    color: Colors.textMuted,
-    marginTop: 4,
-  },
-  langRow: {
-    flexDirection: 'row',
-    gap: Spacing.sm,
-    marginBottom: Spacing.xl,
-  },
-  langButton: {
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.sm,
-    borderRadius: BorderRadius.full,
-    backgroundColor: Colors.surface,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  langButtonActive: {
-    backgroundColor: Colors.primaryMuted,
-    borderColor: Colors.primary,
-  },
-  langText: {
-    fontSize: FontSize.sm,
-    color: Colors.textMuted,
-    fontWeight: '600',
-  },
-  langTextActive: {
-    color: Colors.primary,
-  },
-  pickerRow: {
-    flexDirection: 'row',
-    gap: Spacing.md,
-    marginBottom: Spacing.xl,
-  },
-  pickerButton: {
+  permissionContainer: {
     flex: 1,
-    backgroundColor: Colors.surface,
-    borderRadius: BorderRadius.lg,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: Colors.background,
     padding: Spacing.xl,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: Colors.border,
-    ...Shadows.sm,
   },
-  pickerEmoji: {
-    fontSize: 32,
-    marginBottom: Spacing.sm,
-  },
-  pickerLabel: {
-    fontSize: FontSize.md,
-    color: Colors.textPrimary,
-    fontWeight: '600',
-  },
-  previewContainer: {
-    marginBottom: Spacing.xl,
-  },
-  previewImage: {
-    width: '100%',
-    height: 250,
-    borderRadius: BorderRadius.lg,
-    backgroundColor: Colors.surface,
-  },
-  extractButton: {
-    backgroundColor: Colors.primary,
-    borderRadius: BorderRadius.md,
-    padding: Spacing.lg,
-    alignItems: 'center',
-    marginTop: Spacing.md,
-    ...Shadows.md,
-  },
-  extractButtonDisabled: {
-    opacity: 0.7,
-  },
-  extractButtonText: {
-    fontSize: FontSize.md,
-    color: '#FFFFFF',
-    fontWeight: '700',
-  },
-  processingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-  },
-  errorBox: {
-    backgroundColor: Colors.emergencyMuted,
-    padding: Spacing.lg,
-    borderRadius: BorderRadius.md,
+  permissionText: {
+    ...Typography.bodyPrimary,
+    textAlign: 'center',
     marginBottom: Spacing.lg,
   },
-  errorText: {
-    color: Colors.emergency,
-    fontSize: FontSize.sm,
+  permissionButton: {
+    backgroundColor: Colors.primary,
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.xl,
+    borderRadius: BorderRadius.full,
   },
-  resultSection: {
-    gap: Spacing.lg,
+  permissionButtonText: {
+    ...Typography.bodyPrimary,
+    color: '#FFFFFF',
+    fontWeight: 'bold',
   },
-  summaryCard: {
-    backgroundColor: Colors.surface,
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.xl,
-    borderWidth: 1,
-    borderColor: Colors.primary + '30',
-  },
-  summaryHeader: {
+  header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: Spacing.md,
-  },
-  summaryTitle: {
-    fontSize: FontSize.lg,
-    fontWeight: '700',
-    color: Colors.textPrimary,
-  },
-  readAloudButton: {
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.xs,
-    borderRadius: BorderRadius.full,
-    backgroundColor: Colors.primaryMuted,
-  },
-  readAloudButtonActive: {
-    backgroundColor: Colors.emergencyMuted,
-  },
-  readAloudText: {
-    fontSize: FontSize.xs,
-    color: Colors.primary,
-    fontWeight: '600',
-  },
-  summaryContent: {
-    fontSize: FontSize.md,
-    color: Colors.textSecondary,
-    lineHeight: 24,
-  },
-  dataCard: {
+    paddingTop: 60,
+    paddingHorizontal: Spacing.base,
+    paddingBottom: Spacing.sm,
     backgroundColor: Colors.surface,
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.xl,
-    borderWidth: 1,
-    borderColor: Colors.border,
   },
-  dataTitle: {
-    fontSize: FontSize.lg,
-    fontWeight: '700',
-    color: Colors.textPrimary,
-    marginBottom: Spacing.md,
+  iconButton: {
+    padding: Spacing.sm,
   },
-  dataContent: {
-    fontSize: FontSize.xs,
-    color: Colors.textMuted,
-    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
-    lineHeight: 18,
+  cameraContainer: {
+    flex: 1,
+    overflow: 'hidden',
+    borderBottomLeftRadius: BorderRadius.xl,
+    borderBottomRightRadius: BorderRadius.xl,
   },
-  emptyState: {
+  camera: {
+    flex: 1,
+  },
+  viewfinderOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: Spacing.huge,
   },
-  emptyEmoji: {
-    fontSize: 64,
+  viewfinderBox: {
+    width: '80%',
+    height: '60%',
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.5)',
+    borderRadius: BorderRadius.lg,
+    backgroundColor: 'transparent',
+  },
+  viewfinderText: {
+    ...Typography.bodyPrimary,
+    color: '#FFFFFF',
+    marginTop: Spacing.md,
+    fontWeight: '500',
+  },
+  controlsContainer: {
+    padding: Spacing.xl,
+    backgroundColor: Colors.background,
+    alignItems: 'center',
+  },
+  toggleRow: {
+    flexDirection: 'row',
+    backgroundColor: Colors.surface,
+    borderRadius: BorderRadius.full,
+    padding: 4,
+    marginBottom: Spacing.xl,
+    ...Shadows.sm,
+  },
+  toggleButton: {
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.xl,
+    borderRadius: BorderRadius.full,
+  },
+  toggleButtonActive: {
+    backgroundColor: Colors.primary,
+  },
+  toggleText: {
+    ...Typography.bodyPrimary,
+    color: Colors.textSecondary,
+    fontWeight: '500',
+  },
+  toggleTextActive: {
+    color: '#FFFFFF',
+    fontWeight: 'bold',
+  },
+  captureContainer: {
     marginBottom: Spacing.xl,
   },
-  emptyTitle: {
-    fontSize: FontSize.xl,
-    fontWeight: '700',
-    color: Colors.textPrimary,
-    marginBottom: Spacing.sm,
+  captureButton: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: Colors.surface,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 4,
+    borderColor: Colors.border,
+    ...Shadows.md,
   },
-  emptyDesc: {
-    fontSize: FontSize.md,
+  captureButtonDisabled: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
+  },
+  privacyNote: {
+    alignItems: 'center',
+  },
+  privacyTextPrimary: {
+    ...Typography.micro,
+    color: Colors.textPrimary,
+    fontWeight: 'bold',
+    marginBottom: 2,
+  },
+  privacyTextSecondary: {
+    ...Typography.micro,
     color: Colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 22,
   },
 });

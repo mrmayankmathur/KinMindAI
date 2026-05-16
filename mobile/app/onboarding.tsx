@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Colors, Spacing, FontSize, BorderRadius, Shadows } from '../constants/theme';
+import { Colors, Spacing, Typography, BorderRadius, Shadows } from '../constants/theme';
 import { saveUserProfile } from '../services/database';
 
 export default function OnboardingScreen() {
@@ -44,19 +44,19 @@ export default function OnboardingScreen() {
 
         <View style={styles.form}>
           <Text style={styles.label}>Name</Text>
-          <TextInput style={styles.input} value={name} onChangeText={setName} placeholder="Your name" placeholderTextColor={Colors.textMuted} />
+          <TextInput style={styles.input} value={name} onChangeText={setName} placeholder="Your name" placeholderTextColor={Colors.textSecondary} />
 
           <Text style={styles.label}>Age</Text>
-          <TextInput style={styles.input} value={age} onChangeText={setAge} placeholder="Your age" keyboardType="numeric" placeholderTextColor={Colors.textMuted} />
+          <TextInput style={styles.input} value={age} onChangeText={setAge} placeholder="Your age" keyboardType="numeric" placeholderTextColor={Colors.textSecondary} />
 
           <Text style={styles.label}>Gender</Text>
-          <TextInput style={styles.input} value={gender} onChangeText={setGender} placeholder="Male / Female / Other" placeholderTextColor={Colors.textMuted} />
+          <TextInput style={styles.input} value={gender} onChangeText={setGender} placeholder="Male / Female / Other" placeholderTextColor={Colors.textSecondary} />
 
           <Text style={styles.label}>Medical Conditions (comma separated)</Text>
-          <TextInput style={styles.input} value={conditions} onChangeText={setConditions} placeholder="e.g. Diabetes, Hypertension" placeholderTextColor={Colors.textMuted} />
+          <TextInput style={styles.input} value={conditions} onChangeText={setConditions} placeholder="e.g. Diabetes, Hypertension" placeholderTextColor={Colors.textSecondary} />
 
           <Text style={styles.label}>Allergies (comma separated)</Text>
-          <TextInput style={styles.input} value={allergies} onChangeText={setAllergies} placeholder="e.g. Peanuts, Penicillin" placeholderTextColor={Colors.textMuted} />
+          <TextInput style={styles.input} value={allergies} onChangeText={setAllergies} placeholder="e.g. Peanuts, Penicillin" placeholderTextColor={Colors.textSecondary} />
 
           <TouchableOpacity style={styles.button} onPress={handleSave} disabled={isSaving}>
             <Text style={styles.buttonText}>{isSaving ? 'Saving...' : 'Save & Continue'}</Text>
@@ -77,21 +77,21 @@ const styles = StyleSheet.create({
     paddingTop: 80,
   },
   title: {
-    fontSize: FontSize.xxxl,
-    fontWeight: '800',
+    ...Typography.h1,
+    fontSize: 32,
     color: Colors.textPrimary,
   },
   subtitle: {
-    fontSize: FontSize.md,
+    ...Typography.bodyPrimary,
     color: Colors.textSecondary,
-    marginBottom: Spacing.xxxl,
+    marginBottom: Spacing.xxl,
     marginTop: Spacing.xs,
   },
   form: {
     gap: Spacing.sm,
   },
   label: {
-    fontSize: FontSize.sm,
+    ...Typography.bodySecondary,
     color: Colors.textPrimary,
     fontWeight: '600',
     marginTop: Spacing.md,
@@ -103,7 +103,7 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.md,
     padding: Spacing.md,
     color: Colors.textPrimary,
-    fontSize: FontSize.md,
+    ...Typography.bodyPrimary,
   },
   button: {
     backgroundColor: Colors.primary,
@@ -115,7 +115,8 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     color: '#fff',
-    fontSize: FontSize.lg,
+    ...Typography.bodyPrimary,
     fontWeight: '700',
   },
 });
+
