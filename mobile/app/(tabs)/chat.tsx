@@ -10,6 +10,7 @@ import {
   Platform,
   ActivityIndicator,
   Vibration,
+  Alert,
 } from "react-native";
 import {
   Colors,
@@ -200,6 +201,11 @@ export default function ChatScreen() {
         setTimeout(
           () => flatListRef.current?.scrollToEnd({ animated: true }),
           100,
+        );
+      } else {
+        Alert.alert(
+          "No Speech Detected",
+          "We couldn't hear any speech in that recording. Please try again.",
         );
       }
     } catch (e: any) {

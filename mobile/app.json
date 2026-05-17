@@ -22,7 +22,8 @@
         "NSMicrophoneUsageDescription": "SobaHealth uses the microphone for the push-to-talk health assistant. Audio stays on this device when on-device transcription is enabled."
       },
       "entitlements": {
-        "com.apple.developer.kernel.extended-virtual-addressing": true
+        "com.apple.developer.kernel.extended-virtual-addressing": true,
+        "com.apple.developer.kernel.increased-memory-limit": true
       }
     },
     "android": {

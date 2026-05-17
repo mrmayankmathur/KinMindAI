@@ -57,6 +57,14 @@ export function describeInferenceError(err: unknown): FriendlyError {
       cta: { label: "Connect to edge", route: "/connect" },
     };
   }
+  if (msg.includes("LITERT_SEND_FAILED")) {
+    return {
+      title: "Inference Error",
+      message:
+        msg.replace("LITERT_SEND_FAILED:", "").trim() ||
+        "The model failed to generate a response. Please try sending a shorter message.",
+    };
+  }
   if (msg.includes("DEVICE_FEATURE_UNAVAILABLE")) {
     return {
       title: "Feature unavailable on-device",

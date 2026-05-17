@@ -48,7 +48,8 @@ async function getInstance(): Promise<any> {
       const { createLLM } = mod;
       const llm = createLLM();
       await llm.loadModel(toNativePath(path), {
-        backend: "gpu",
+        backend: "cpu",
+        maxTokens: 4096,
         systemPrompt:
           "You are a careful, concise, empathetic medical AI assistant. You give short, evidence-based answers and always advise seeing a clinician for serious or persistent symptoms. You never invent diagnoses.",
       });
@@ -71,17 +72,17 @@ function languageName(code: string): string {
   );
 }
 
-function buildGemmaPrompt(
+// Convert conversation into plain text without Gemma control tokens,
+// because react-native-litert-lm applies templates automatically in C++.
+function buildPlainTextPrompt(
   messages: Array<{ role: string; content: string }>,
   trailing: string,
 ): string {
-  let prompt = "";
-  for (const m of messages) {
-    const role = m.role === "assistant" ? "model" : m.role;
-    prompt += `<start_of_turn>${role}\n${m.content}<end_of_turn>\n`;
-  }
-  prompt += `<start_of_turn>model\n${trailing}`;
-  return prompt;
+  // The LiteRT ML engine natively maintains conversation history via its internal KV Cache.
+  // Passing the entire stringified history causes quadratic context growth and memory crashes!
+  // We only need to extract and format the latest message.
+  const latestMessage = messages[messages.length - 1]?.content || "";
+  return `Instructions: ${trailing}\nPatient: ${latestMessage}\nAI Assistant:`;
 }
 
 // ---- Chat ----------------------------------------------------------------
@@ -91,12 +92,26 @@ export async function localChat(
   language: string = "en",
 ): Promise<{ response: string; language: string }> {
   const llm = await getInstance();
-  const prompt = buildGemmaPrompt(
+  const prompt = buildPlainTextPrompt(
     messages,
-    `Respond in ${languageName(language)}:\n`,
+    `Respond naturally as the AI Assistant in ${languageName(language)}:\n`,
   );
-  const raw = await llm.sendMessage(prompt);
-  return { response: (raw ?? "").trim(), language };
+
+  if (typeof llm.resetConversation === "function") {
+    llm.resetConversation();
+  }
+
+  try {
+    const raw = await llm.sendMessage(prompt);
+    return { response: (raw ?? "").trim(), language };
+  } catch (error: any) {
+    if (error.message && error.message.includes("sendMessage failed")) {
+      throw new Error(
+        "LITERT_SEND_FAILED: The AI model failed to process this prompt. The input may be too long.",
+      );
+    }
+    throw error;
+  }
 }
 
 // ---- Symptoms ------------------------------------------------------------
@@ -127,14 +142,29 @@ export async function localSymptomCheck(
   const llm = await getInstance();
   const lang = languageName(language);
   const instruction =
-    `Analyze the symptoms in the conversation above. Output ONLY a single valid JSON object, no preamble, no markdown fences, with these keys:\n` +
-    `  "response": string, a friendly message to the user that either asks a clarifying follow-up question or gives concrete next-step advice.\n` +
+    `Analyze the symptoms. Output ONLY a single valid JSON object, no preamble, with these exact keys:\n` +
+    `  "response": string, friendly message asking a clarifying follow-up or giving next-step advice.\n` +
     `  "urgency": one of "emergency", "see_doctor", "self_care", or "gathering_info".\n` +
-    `  "reasoning": string, a brief chain of thought explaining how you reached the urgency.\n` +
-    `  "extracted_data": object with optional keys "primary" (string) and "associated" (array of strings).\n` +
+    `  "reasoning": string, a brief chain of thought.\n` +
+    `  "extracted_data": object with "primary" (string) and "associated" (array of strings).\n` +
     `Respond in ${lang}.\n`;
-  const prompt = buildGemmaPrompt(messages, instruction);
-  const raw = await llm.sendMessage(prompt);
+  const prompt = buildPlainTextPrompt(messages, instruction);
+  let raw: string | null = null;
+
+  if (typeof llm.resetConversation === "function") {
+    llm.resetConversation();
+  }
+
+  try {
+    raw = await llm.sendMessage(prompt);
+  } catch (error: any) {
+    if (error.message && error.message.includes("sendMessage failed")) {
+      throw new Error(
+        "LITERT_SEND_FAILED: The AI model failed to process this prompt. The input may be too long.",
+      );
+    }
+    throw error;
+  }
   const parsed = safeJsonExtract(raw);
 
   if (!parsed) {

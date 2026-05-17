@@ -56,7 +56,7 @@ export async function transcribeOnDevice(
   language: string = "en",
 ): Promise<{ transcript: string; detected_language: string }> {
   const ctx = await getContext();
-  const { result } = await ctx.transcribe(audioUri.replace(/^file:\/\//, ""), {
+  const { result } = await ctx.transcribe(audioUri, {
     language,
   });
   return {
