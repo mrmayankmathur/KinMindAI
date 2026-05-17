@@ -18,7 +18,8 @@
       "bundleIdentifier": "com.sobahealth.healthapp",
       "infoPlist": {
         "UIFileSharingEnabled": true,
-        "LSSupportsOpeningDocumentsInPlace": true
+        "LSSupportsOpeningDocumentsInPlace": true,
+        "NSMicrophoneUsageDescription": "SobaHealth uses the microphone for the push-to-talk health assistant. Audio stays on this device when on-device transcription is enabled."
       },
       "entitlements": {
         "com.apple.developer.kernel.extended-virtual-addressing": true
@@ -34,7 +35,8 @@
       "permissions": [
         "android.permission.CAMERA",
         "android.permission.RECORD_AUDIO",
-        "android.permission.ACCESS_NETWORK_STATE"
+        "android.permission.ACCESS_NETWORK_STATE",
+        "android.permission.READ_EXTERNAL_STORAGE"
       ]
     },
     "plugins": [

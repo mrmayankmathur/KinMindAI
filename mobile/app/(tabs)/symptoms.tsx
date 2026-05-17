@@ -15,6 +15,8 @@ import { checkSymptoms } from '../../services/api';
 import { ConnectionBadge } from '../../components/ConnectionBadge';
 import { ThinkingBlock } from '../../components/ThinkingBlock';
 import { Send, Activity } from 'lucide-react-native';
+import { describeInferenceError } from '../../services/errorMessages';
+import { useRouter } from 'expo-router';
 
 interface SymptomMessage {
   id: string;
@@ -28,6 +30,7 @@ interface SymptomMessage {
 }
 
 export default function SymptomsScreen() {
+  const router = useRouter();
   const [messages, setMessages] = useState<SymptomMessage[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -70,12 +73,16 @@ export default function SymptomsScreen() {
       setMessages((prev) => [...prev, assistantMsg]);
       setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
     } catch (e: any) {
+      const friendly = describeInferenceError(e);
       const errMsg: SymptomMessage = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: `⚠️ Error: ${e.message || 'Could not process symptoms'}`,
+        content: `${friendly.title}: ${friendly.message}`,
       };
       setMessages((prev) => [...prev, errMsg]);
+      if (friendly.cta) {
+        setTimeout(() => router.push(friendly.cta!.route), 100);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -121,7 +128,7 @@ export default function SymptomsScreen() {
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerRow}>
-          <ConnectionBadge status="connected" />
+          <ConnectionBadge />
           <Text style={styles.headerTitle}>Symptom Checker</Text>
         </View>
       </View>

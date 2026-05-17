@@ -10,7 +10,6 @@ import {
   Platform,
   ActivityIndicator,
   Vibration,
-  Alert,
 } from "react-native";
 import {
   Colors,
@@ -21,11 +20,13 @@ import {
 } from "../../constants/theme";
 import { sendChatMessage, transcribeAudio } from "../../services/api";
 import { startRecording, stopRecording } from "../../services/recorder";
+import { showInferenceError } from "../../services/errorMessages";
+import { useRouter } from "expo-router";
 import * as SQLite from "expo-sqlite";
 import { ConnectionBadge } from "../../components/ConnectionBadge";
 import { ChatBubble } from "../../components/ChatBubble";
 import { PTTButton } from "../../components/PTTButton";
-import { Send, Trash2 } from "lucide-react-native";
+import { Send, Trash2, Settings as SettingsIcon } from "lucide-react-native";
 
 interface ChatMessage {
   id: string;
@@ -35,6 +36,7 @@ interface ChatMessage {
 }
 
 export default function ChatScreen() {
+  const router = useRouter();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -139,10 +141,7 @@ export default function ChatScreen() {
       );
     } catch (e: any) {
       console.warn(e);
-      Alert.alert(
-        "Connection Error",
-        e.message || "Could not reach the Edge Server.",
-      );
+      showInferenceError(e, router);
     } finally {
       setIsLoading(false);
     }
@@ -205,10 +204,7 @@ export default function ChatScreen() {
       }
     } catch (e: any) {
       console.warn(e);
-      Alert.alert(
-        "Transcription Error",
-        e.message || "Could not process audio.",
-      );
+      showInferenceError(e, router);
     } finally {
       setIsLoading(false);
     }
@@ -239,10 +235,19 @@ export default function ChatScreen() {
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerRow}>
-          <ConnectionBadge status="connected" />
-          <TouchableOpacity onPress={clearHistory} style={styles.clearButton}>
-            <Trash2 size={20} color={Colors.textSecondary} />
-          </TouchableOpacity>
+          <ConnectionBadge />
+          <View style={styles.headerActions}>
+            <TouchableOpacity
+              onPress={() => router.push("/settings")}
+              style={styles.clearButton}
+              accessibilityLabel="Open settings"
+            >
+              <SettingsIcon size={20} color={Colors.textSecondary} />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={clearHistory} style={styles.clearButton}>
+              <Trash2 size={20} color={Colors.textSecondary} />
+            </TouchableOpacity>
+          </View>
         </View>
         <Text style={styles.headerTitle}>Medical Assistant</Text>
       </View>
@@ -333,6 +338,10 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: Spacing.sm,
+  },
+  headerActions: {
+    flexDirection: "row",
+    gap: Spacing.xs,
   },
   clearButton: {
     padding: Spacing.xs,
