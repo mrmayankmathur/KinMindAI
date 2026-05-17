@@ -45,7 +45,7 @@ async function getContext(): Promise<any> {
     whisperContextPromise = (async () => {
       const mod = await loadWhisperModule();
       const { initWhisper } = mod;
-      return initWhisper({ filePath: toNativePath(path) });
+      return initWhisper({ filePath: path });
     })();
   }
   return whisperContextPromise;
@@ -56,9 +56,12 @@ export async function transcribeOnDevice(
   language: string = "en",
 ): Promise<{ transcript: string; detected_language: string }> {
   const ctx = await getContext();
-  const { result } = await ctx.transcribe(audioUri, {
+  console.log("Transcribing on-device from audio URI:", audioUri);
+  const { promise } = ctx.transcribe(audioUri, {
     language,
   });
+  const { result } = await promise;
+  console.log("On-device transcription result:", result);
   return {
     transcript: (result ?? "").trim(),
     detected_language: language,

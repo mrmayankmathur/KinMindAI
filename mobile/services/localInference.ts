@@ -72,17 +72,42 @@ function languageName(code: string): string {
   );
 }
 
+// Helper to clean LiteRT-LM template wrappers and echoed prompts.
+function cleanResponse(raw: string, prompt: string): string {
+  let cleaned = raw.trim();
+
+  // If the engine echoed the prompt at the start, strip it.
+  if (cleaned.startsWith(prompt)) {
+    cleaned = cleaned.substring(prompt.length).trim();
+  }
+
+  // Strip any echoed chat templates or turn wrappers.
+  cleaned = cleaned
+    .replace(/^<start_of_turn>model\s*/i, "")
+    .replace(/^model\s*/i, "")
+    .replace(/^<start_of_turn>user\s*/i, "")
+    .replace(/^user\s*/i, "")
+    .replace(/<end_of_turn>\s*$/i, "")
+    .replace(/^ai assistant:\s*/i, "")
+    .replace(/^assistant:\s*/i, "")
+    .trim();
+
+  return cleaned;
+}
+
 // Convert conversation into plain text without Gemma control tokens,
 // because react-native-litert-lm applies templates automatically in C++.
 function buildPlainTextPrompt(
   messages: Array<{ role: string; content: string }>,
-  trailing: string,
+  instruction?: string,
 ): string {
-  // The LiteRT ML engine natively maintains conversation history via its internal KV Cache.
-  // Passing the entire stringified history causes quadratic context growth and memory crashes!
-  // We only need to extract and format the latest message.
+  // LiteRT-LM natively manages conversation history via its internal KV Cache.
+  // We only pass the latest message to avoid quadratic context growth.
   const latestMessage = messages[messages.length - 1]?.content || "";
-  return `Instructions: ${trailing}\nPatient: ${latestMessage}\nAI Assistant:`;
+  if (instruction) {
+    return `${instruction}\nPatient: ${latestMessage}`;
+  }
+  return latestMessage;
 }
 
 // ---- Chat ----------------------------------------------------------------
@@ -92,10 +117,7 @@ export async function localChat(
   language: string = "en",
 ): Promise<{ response: string; language: string }> {
   const llm = await getInstance();
-  const prompt = buildPlainTextPrompt(
-    messages,
-    `Respond naturally as the AI Assistant in ${languageName(language)}:\n`,
-  );
+  const prompt = buildPlainTextPrompt(messages);
 
   if (typeof llm.resetConversation === "function") {
     llm.resetConversation();
@@ -103,7 +125,8 @@ export async function localChat(
 
   try {
     const raw = await llm.sendMessage(prompt);
-    return { response: (raw ?? "").trim(), language };
+    const cleaned = cleanResponse(raw ?? "", prompt);
+    return { response: cleaned, language };
   } catch (error: any) {
     if (error.message && error.message.includes("sendMessage failed")) {
       throw new Error(
@@ -165,11 +188,12 @@ export async function localSymptomCheck(
     }
     throw error;
   }
-  const parsed = safeJsonExtract(raw);
+  const cleaned = cleanResponse(raw ?? "", prompt);
+  const parsed = safeJsonExtract(cleaned);
 
   if (!parsed) {
     return {
-      response: (raw ?? "").trim(),
+      response: cleaned,
       urgency: "gathering_info",
       reasoning: "Local model did not return parseable JSON; showing raw text.",
       extracted_data: {},

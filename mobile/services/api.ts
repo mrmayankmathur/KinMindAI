@@ -234,8 +234,8 @@ export async function transcribeAudio(
     const formData = new FormData();
     formData.append("audio", {
       uri: audioUri,
-      type: "audio/m4a",
-      name: "recording.m4a",
+      type: "audio/wav",
+      name: "recording.wav",
     } as any);
     if (language) formData.append("language", language);
 

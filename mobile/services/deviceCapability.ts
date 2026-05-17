@@ -92,8 +92,13 @@ export async function getDeviceCapability(
   const totalMemoryGB = totalMemory / (1024 * 1024 * 1024);
   const modelId = Device.modelId ?? Device.modelName ?? "unknown";
   const modelName = Device.modelName ?? modelId;
-  const osVersion = Device.osVersion ?? "0";
+  const osVersion = Device.osVersion ?? String(Platform.Version) ?? "17.0";
   const osMajor = parseOsMajor(osVersion);
+
+  const onAllowlist =
+    Platform.OS === "ios"
+      ? isIosOnAllowlist(modelId)
+      : isAndroidOnAllowlist(modelName);
 
   // Hard blocks first.
   if (Platform.OS === "ios" && osMajor < 16) {
@@ -118,7 +123,10 @@ export async function getDeviceCapability(
     };
     return cached;
   }
-  if (totalMemory > 0 && totalMemory < MIN_RAM_BYTES) {
+
+  // If the device is on our validated tier-1 allowlist, we trust it has sufficient memory
+  // (e.g. iPhone 15 Pro+ and newer have 8GB+ RAM) even if expo-device reports a sandboxed / low totalMemory.
+  if (!onAllowlist && totalMemory > 0 && totalMemory < MIN_RAM_BYTES) {
     cached = {
       tier: "red",
       reason: `Only ${totalMemoryGB.toFixed(1)} GB RAM detected. The quantized Gemma 4 E2B model needs at least 6 GB to run safely.`,
@@ -134,11 +142,6 @@ export async function getDeviceCapability(
   // not yet shipped. Chat + symptoms work; vision falls back to edge.
   // whisper.rn provides STT independently on iOS, so STT stays available.
   const iosMultimodalGap = Platform.OS === "ios";
-
-  const onAllowlist =
-    Platform.OS === "ios"
-      ? isIosOnAllowlist(modelId)
-      : isAndroidOnAllowlist(modelName);
 
   if (onAllowlist) {
     cached = {

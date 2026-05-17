@@ -171,11 +171,17 @@ export default function ChatScreen() {
       }
 
       const result = await transcribeAudio(audioUri, "en");
-      if (result.transcript && result.transcript.trim()) {
+      const transcript = (result.transcript || "").trim();
+      const isBlank = !transcript || 
+                      transcript.toUpperCase() === "[BLANK_AUDIO]" || 
+                      transcript.toLowerCase().includes("blank_audio") ||
+                      transcript === "...";
+
+      if (transcript && !isBlank) {
         const userMsg: ChatMessage = {
           id: Date.now().toString(),
           role: "user",
-          content: result.transcript.trim(),
+          content: transcript,
           timestamp: new Date(),
         };
         const updatedMessages = [...messages, userMsg];
