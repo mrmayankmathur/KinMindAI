@@ -34,6 +34,13 @@ pushd "$LLAMA_DIR" >/dev/null
 echo ">>> Installing llama.cpp python conversion deps"
 pip install -q -r requirements.txt
 
+# llama.cpp's requirements pin transformers loosely and the latest release
+# (>=5.5.1) introduces a torchvision/type_validators import chain that breaks
+# the Gemma 4 config load on Kaggle (where torch may be 2.6.0+cpu). Pin to the
+# last known-good version that Unsloth also accepts.
+echo ">>> Pinning transformers to 5.5.0 to avoid Gemma 4 import chain issue"
+pip install -q --no-deps --force-reinstall "transformers==5.5.0"
+
 echo ">>> Building llama-quantize (CPU build is enough for quantizing)"
 if [ ! -x "build/bin/llama-quantize" ]; then
     cmake -B build -DGGML_NATIVE=OFF -DLLAMA_CURL=OFF >/dev/null
