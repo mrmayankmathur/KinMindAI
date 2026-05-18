@@ -1,52 +1,78 @@
-# SobaHealth: Offline-First Edge AI Health Copilot
+# SobaHealth: Offline-First Edge AI Health Platform
 
-SobaHealth is an offline-first, multimodal AI health and education copilot designed for low-connectivity environments. By decoupling the user interface from inference compute, SobaHealth delivers zero-latency, internet-independent AI intelligence ensuring 100% on-device data privacy.
+SobaHealth is an offline-first, hybrid-routing multimodal AI health platform designed for zero-connectivity environments. By intelligently routing inference between a local Wi-Fi Edge Server and the client phone's on-device native runtimes, SobaHealth guarantees zero-latency, 100% private, and internet-independent clinical intelligence.
+
+---
 
 ## 🏗️ Architecture: Edge AI
 
-To overcome the hardware limitations of mobile devices without compromising privacy or relying on cloud infrastructure, SobaHealth employs a local Edge AI architecture:
+To ensure high performance while preserving complete privacy and remaining resilient to server dropouts, SobaHealth features a dynamic **Hybrid Inference Router**:
 
 ```text
-📱 React Native App (Client)  <--- Local Wi-Fi / Hotspot --->  🖥️ Edge Server (Laptop/Hub)
-    ├── SQLite (EHR Data)            (ZERO INTERNET)               ├── FastAPI
-    ├── UI & Local State                                           ├── Ollama (Gemma 4 E4B)
-    └── expo-av (Audio Capture)                                    ├── faster-whisper (STT)
-                                                                   └── Server-Sent Events (SSE)
+                                  ┌───────────────────────────┐
+                                  │   React Native Client     │
+                                  │  (SQLite Local EHR RAG)   │
+                                  └─────────────┬─────────────┘
+                                                │
+                                    ┌───────────▼───────────┐
+                                    │   Inference Router    │
+                                    └─────┬───────────┬─────┘
+                        (Server Active)   │           │   (Server Down / Offline)
+                                          │           │
+                    ┌─────────────────────▼─┐       ┌─▼─────────────────────┐
+                    │   Edge Server Node    │       │   On-Device Native    │
+                    │  (Local Wi-Fi Hub)    │       │   (Client Hardware)   │
+                    ├───────────────────────┤       ├───────────────────────┤
+                    │ • FastAPI             │       │ • LiteRT (TF Lite)    │
+                    │ • Ollama (Gemma 4)    │       │ • whisper.spm (Native)│
+                    │ • faster-whisper STT  │       │ • Zero Network Calls  │
+                    └───────────────────────┘       └───────────────────────┘
 ```
+
+When connected to a local edge hub (e.g., a laptop or private hot-spot), the router leverages the edge server's hardware for high-fidelity extraction and speed. If the server becomes unreachable, the router instantly and transparently switches to the **on-device native runtime** (LiteRT & local Whisper) without disrupting the user.
+
+---
 
 ## ✨ Core AI Capabilities
 
-SobaHealth heavily utilizes the advanced capabilities of the **Gemma 4** model family running locally via Ollama:
+SobaHealth leverages the advanced capabilities of the **Gemma 4** model family across both edge and local execution paths:
 
-- **Clinical Symptom Triage:** Utilizes **Gemma 4's Function Calling** to strictly format outputs into structured JSON for safe, deterministic risk assessment, avoiding prompt hacking.
-- **Risk Reasoning:** Employs **Thinking Mode** to generate transparent reasoning chains (Chain-of-Thought) for health analyses.
-- **Multimodal Document & Nutrition Scanning:** Uses Gemma's Vision capabilities to extract structured data from physical medical reports and perform calorie breakdowns from food photos.
-- **Contextual Memory (256K Context):** Dynamically injects a patient's full SQLite Electronic Health Record (EHR) history into the prompt window to enable hyper-personalized, hallucination-resistant conversations.
-- **Native Multilingual Voice:** End-to-end push-to-talk pipeline using `faster-whisper` for offline STT, communicating seamlessly in English, Hindi, Tamil, and Telugu without external translation APIs.
+- **Clinical Symptom Triage**: Utilizes **Gemma 4's Function Calling** to strictly format outputs into structured JSON for safe, deterministic risk assessment, avoiding prompt injection or hallucination.
+- **Risk Reasoning & Chain-of-Thought (CoT)**: Employs **Thinking Mode** to generate transparent reasoning chains inside `<think>` blocks, rendered in a beautifully styled clinical blockquote layout.
+- **Multimodal Document & Nutrition Scanning**: Uses vision models on the Edge (or local heuristics fallbacks on-device) to extract structured clinical data from lab reports and perform detailed calorie breakdowns from food photos.
+- **Contextual EHR Memory (SQLite RAG)**: Dynamically extracts and injects a patient's local SQLite electronic health record history (e.g., allergies, conditions, recent scans) directly into every query's prompt window, maintaining clinical personalization across both edge and on-device backends.
+- **Native Multilingual Voice (STT)**: End-to-end push-to-talk voice client using `faster-whisper` on the edge or native Whisper on-device for offline Speech-to-Text transcription (English, Hindi, Tamil, Telugu) with automatic language detection and blank audio protection.
+
+---
 
 ## 🛠️ Tech Stack
 
-**Backend (Edge Node)**
+### Client (Mobile Application)
 
-- Python, FastAPI
-- Ollama, Gemma 4 (Text & Vision)
-- faster-whisper (STT), gTTS fallback
+- **Core**: React Native, Expo, TypeScript
+- **Database**: SQLite (`expo-sqlite` for offline RAG memory and local medical records)
+- **Local Inference**:
+  - **LiteRT (TensorFlow Lite)** for direct on-device execution of quantized Gemma models
+  - **Whisper Native** for fully offline, on-device audio transcription
+- **State & Routing**: `inferenceRouter` dynamic state manager
 
-**Frontend (Mobile Client)**
+### Server (Edge Node)
 
-- React Native, Expo, TypeScript
-- SQLite (Local Data Persistence)
-- Server-Sent Events (SSE) for real-time chat streaming
+- **API Framework**: Python, FastAPI
+- **Text & Vision**: Ollama / Gemma 4
+- **Audio Transcription**: `faster-whisper` (Offline STT)
+
+---
 
 ## 🚀 Getting Started
 
 ### Prerequisites
 
-- [Ollama](https://ollama.com/) installed and running locally with the Gemma 4 model.
-- Python 3.9+ for the edge server.
-- Node.js and Expo CLI for the mobile app.
+- [Ollama](https://ollama.com/) installed and running locally with the Gemma 4 model (for the Edge Node).
+- Python 3.9+ for the Edge Server backend.
+- Node.js (v18+) and Expo CLI for the mobile application.
 
-### 1. Start the Edge Server
+### 1. Run the Edge Server Backend
 
 ```bash
 cd backend
@@ -56,12 +82,13 @@ pip install -r requirements.txt
 uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-### 2. Run the Mobile App
+### 2. Start the Mobile Client
 
 ```bash
 cd mobile
 npm install
-npx expo start
+npx expo start -c
 ```
 
-_Scan the QR code generated by the FastAPI server on startup to automatically connect the app to the local edge node._
+- **Automatic Server Discovery**: Scan the QR code generated by the FastAPI server on startup to automatically discover and pair the mobile client to the Edge Node.
+- **Offline Mode**: Go to Settings (`/connect`) in the app to switch preferred inference paths (Auto, Edge, or Device) or manage local model downloads.
