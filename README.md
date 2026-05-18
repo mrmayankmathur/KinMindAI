@@ -68,7 +68,7 @@ SobaHealth leverages the advanced capabilities of the **Gemma 4** model family a
 
 To maximize accuracy in rural clinical settings, SobaHealth utilizes a custom-tuned Gemma 4 model:
 
-- **Datasets**:
+- **Datasets** (Available on [Google Drive](https://drive.google.com/drive/folders/1-sU5AYWbk-1V0u1WfP26Nyc6nwbryQKV?usp=sharing)):
   - **MIMIC-IV-Ext-Instr**: 450k+ clinical instruction pairs for unstructured EHR note parsing.
   - **n2c2 (National NLP Clinical Challenges)**: Gold-standard medication and concept extraction templates for deterministic JSON formatting.
   - **TeleQnA & MedSynth**: Telemedical dialogues to bridge the gap between medical terminology and colloquial patient symptoms.
