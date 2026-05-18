@@ -21,7 +21,7 @@ import { checkSymptoms } from "../../services/api";
 import { ConnectionBadge } from "../../components/ConnectionBadge";
 import { ThinkingBlock } from "../../components/ThinkingBlock";
 import { Send, Activity } from "lucide-react-native";
-import { describeInferenceError } from "../../services/errorMessages";
+// import { describeInferenceError } from "../../services/errorMessages";
 import { awardXP } from "../../services/gamification";
 import { useRouter } from "expo-router";
 
@@ -116,25 +116,8 @@ export default function SymptomsScreen() {
               <ThinkingBlock reasoning_text={item.reasoning} />
             )}
 
-            {item.extractedData && (
-              <View style={styles.extractedBox}>
-                <Text style={styles.extractedTitle}>
-                  [Extracted Data Preview]
-                </Text>
-                <Text style={styles.extractedItem}>
-                  • Primary: {item.extractedData.primary}
-                </Text>
-                {item.extractedData.associated &&
-                  item.extractedData.associated.length > 0 && (
-                    <Text style={styles.extractedItem}>
-                      • Associated: {item.extractedData.associated.join(", ")}
-                    </Text>
-                  )}
-              </View>
-            )}
-
             <View style={[styles.messageBubble, styles.assistantBubble]}>
-              <Text style={styles.assistantText}>AI: "{item.content}"</Text>
+              <Text style={styles.assistantText}>{item.content}</Text>
             </View>
           </View>
         )}
@@ -260,6 +243,7 @@ const styles = StyleSheet.create({
   },
   assistantWrapper: {
     alignItems: "flex-start",
+    width: "100%",
     maxWidth: "90%",
   },
   messageBubble: {

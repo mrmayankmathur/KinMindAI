@@ -13,12 +13,13 @@ import { useRouter, useFocusEffect } from 'expo-router';
 import { Colors, Spacing, Typography, BorderRadius, Shadows } from '../../constants/theme';
 import { getHealthRecords, type HealthRecordRow } from '../../services/database';
 import { ConnectionBadge } from '../../components/ConnectionBadge';
-import { Search, Plus, FileText, Pill, Syringe } from 'lucide-react-native';
+import { Search, Plus, FileText, Pill, Syringe, Apple } from 'lucide-react-native';
 
 const TYPE_CONFIG: Record<string, { icon: React.ReactNode; label: string; color: string }> = {
   lab: { icon: <FileText size={20} color={Colors.primary} />, label: 'Lab Report', color: Colors.primary },
   prescription: { icon: <Pill size={20} color={Colors.warning} />, label: 'Prescription', color: Colors.warning },
   vaccination: { icon: <Syringe size={20} color={Colors.success} />, label: 'Vaccination', color: Colors.success },
+  nutrition: { icon: <Apple size={20} color={Colors.success} />, label: 'Nutrition', color: Colors.success },
 };
 
 export default function RecordsScreen() {
@@ -36,7 +37,7 @@ export default function RecordsScreen() {
   async function loadRecords() {
     try {
       const data = await getHealthRecords();
-      setRecords(data);
+      setRecords([...data]);
     } catch (e) {
       console.warn('Failed to load records:', e);
     }
@@ -51,7 +52,10 @@ export default function RecordsScreen() {
   // Mock group records by month
   const groupedRecords = records.reduce((acc, record) => {
     const date = new Date(record.created_at);
-    const monthYear = date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    // Use simple fallback to avoid Intl API issues on Hermes
+    const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    const monthYear = `${months[date.getMonth()]} ${date.getFullYear()}`;
+    
     if (!acc[monthYear]) acc[monthYear] = [];
     acc[monthYear].push(record);
     return acc;
@@ -59,7 +63,7 @@ export default function RecordsScreen() {
 
   const filteredGroups = Object.keys(groupedRecords).reduce((acc, monthYear) => {
     const filtered = groupedRecords[monthYear].filter(record => 
-      record.summary.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (record.summary || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
       (TYPE_CONFIG[record.type]?.label || '').toLowerCase().includes(searchQuery.toLowerCase())
     );
     if (filtered.length > 0) acc[monthYear] = filtered;
@@ -67,10 +71,9 @@ export default function RecordsScreen() {
   }, {} as Record<string, HealthRecordRow[]>);
 
   function formatDate(timestamp: number): string {
-    return new Date(timestamp).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-    });
+    const date = new Date(timestamp);
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    return `${months[date.getMonth()]} ${date.getDate()}`;
   }
 
   return (

@@ -173,10 +173,10 @@ export async function sendChatMessage(
   let reasoning = "";
 
   // Parse <think> blocks if the model supports it
-  const thinkMatch = responseText.match(/<think>([\s\S]*?)<\/think>/i);
+  const thinkMatch = responseText.match(/<think>([\s\S]*?)(?:<\/think>|$)/i);
   if (thinkMatch) {
     reasoning = thinkMatch[1].trim();
-    responseText = responseText.replace(/<think>[\s\S]*?<\/think>/i, "").trim();
+    responseText = responseText.replace(/<think>[\s\S]*?(?:<\/think>|$)/i, "").trim();
   }
 
   return { response: responseText, language: data.language, reasoning };
@@ -220,10 +220,21 @@ export async function checkSymptoms(
   }
 
   const data = await res.json();
+  
+  let responseText = data.response || "";
+  let reasoning = data.thinking || "";
+
+  // Parse <think> blocks if the model supports it and the backend missed it
+  const thinkMatch = responseText.match(/<think>([\s\S]*?)(?:<\/think>|$)/i);
+  if (thinkMatch) {
+    reasoning = (reasoning ? reasoning + "\n" : "") + thinkMatch[1].trim();
+    responseText = responseText.replace(/<think>[\s\S]*?(?:<\/think>|$)/i, "").trim();
+  }
+
   return {
-    response: data.response,
+    response: responseText,
     urgency: data.urgency,
-    reasoning: data.thinking,
+    reasoning: reasoning,
     extracted_data: { risk_flags: data.risk_flags },
   };
 }
