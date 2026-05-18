@@ -139,7 +139,7 @@ async function buildRagContext(): Promise<string> {
 export async function sendChatMessage(
   messages: Array<{ role: string; content: string }>,
   language: string = "en",
-): Promise<{ response: string; language: string }> {
+): Promise<{ response: string; language: string; reasoning?: string }> {
   const serverUrl = await getServerUrl();
   if (!serverUrl) throw new Error("Not connected to server");
 
@@ -169,7 +169,17 @@ export async function sendChatMessage(
   }
 
   const data = await res.json();
-  return { response: data.response, language: data.language };
+  let responseText = data.response || "";
+  let reasoning = "";
+
+  // Parse <think> blocks if the model supports it
+  const thinkMatch = responseText.match(/<think>([\s\S]*?)<\/think>/i);
+  if (thinkMatch) {
+    reasoning = thinkMatch[1].trim();
+    responseText = responseText.replace(/<think>[\s\S]*?<\/think>/i, "").trim();
+  }
+
+  return { response: responseText, language: data.language, reasoning };
 }
 
 /**

@@ -19,12 +19,21 @@ export function ThinkingBlock({ reasoning_text }: Props) {
     setExpanded(!expanded);
   };
 
+  const lines = reasoning_text.split('\n').filter(l => l.trim() !== '');
+  const firstLine = lines.length > 0 ? lines[0] : '';
+
   return (
     <View style={styles.container}>
       <TouchableOpacity style={styles.header} onPress={toggleExpand} activeOpacity={0.7}>
         <View style={styles.headerLeft}>
           <Brain size={16} color={Colors.textSecondary} />
-          <Text style={styles.title}>AI Reasoning...</Text>
+          {!expanded && firstLine ? (
+            <Text style={styles.previewText} numberOfLines={1}>
+              {firstLine}...
+            </Text>
+          ) : (
+            <Text style={styles.title}>AI Reasoning</Text>
+          )}
         </View>
         {expanded ? (
           <ChevronUp size={16} color={Colors.textSecondary} />
@@ -65,11 +74,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.sm,
+    flex: 1,
+    paddingRight: Spacing.sm,
   },
   title: {
     ...Typography.micro,
     color: Colors.textSecondary,
     fontWeight: '600',
+  },
+  previewText: {
+    ...Typography.micro,
+    color: Colors.textSecondary,
+    fontWeight: '400',
+    flex: 1,
+    fontStyle: 'italic',
   },
   content: {
     padding: Spacing.sm,

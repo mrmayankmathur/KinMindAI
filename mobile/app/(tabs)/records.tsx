@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -9,7 +9,7 @@ import {
   TextInput,
   Platform,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { Colors, Spacing, Typography, BorderRadius, Shadows } from '../../constants/theme';
 import { getHealthRecords, type HealthRecordRow } from '../../services/database';
 import { ConnectionBadge } from '../../components/ConnectionBadge';
@@ -27,9 +27,11 @@ export default function RecordsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
-  useEffect(() => {
-    loadRecords();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      loadRecords();
+    }, [])
+  );
 
   async function loadRecords() {
     try {
@@ -126,7 +128,11 @@ export default function RecordsScreen() {
               {filteredGroups[monthYear].map(record => {
                 const config = TYPE_CONFIG[record.type] || TYPE_CONFIG.lab;
                 return (
-                  <View key={record.id} style={styles.recordCard}>
+                  <TouchableOpacity 
+                    key={record.id} 
+                    style={styles.recordCard}
+                    onPress={() => router.push(`/record/${record.id}` as any)}
+                  >
                     <View style={styles.recordIconBox}>
                       {config.icon}
                     </View>
@@ -135,7 +141,7 @@ export default function RecordsScreen() {
                       <Text style={styles.recordSummary} numberOfLines={1}>{record.summary}</Text>
                       <Text style={styles.recordMeta}>Date: {formatDate(record.created_at)}</Text>
                     </View>
-                  </View>
+                  </TouchableOpacity>
                 );
               })}
             </View>

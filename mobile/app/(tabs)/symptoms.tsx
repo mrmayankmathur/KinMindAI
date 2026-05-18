@@ -65,8 +65,13 @@ export default function SymptomsScreen() {
         content: m.content,
       }));
 
+      // Get preferred language from profile
+      const { getUserProfile } = require("../../services/database");
+      const profile = await getUserProfile();
+      const lang = profile?.preferred_language || "en";
+
       // Use actual reasoning and extraction from the API response
-      const response = await checkSymptoms(apiMessages, "en");
+      const response = await checkSymptoms(apiMessages, lang);
 
       const assistantMsg: SymptomMessage = {
         id: (Date.now() + 1).toString(),

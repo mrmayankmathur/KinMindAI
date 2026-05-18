@@ -262,15 +262,18 @@ export default function ChatScreen() {
         ref={flatListRef}
         data={messages}
         renderItem={({ item, index }) => (
-          <ChatBubble
-            role={item.role as "user" | "ai"}
-            content={item.content}
-            isStreaming={
-              isLoading &&
-              index === messages.length - 1 &&
-              item.role === "assistant"
-            }
-          />
+          <View>
+            {item.reasoning && <ThinkingBlock reasoning_text={item.reasoning} />}
+            <ChatBubble
+              role={item.role as "user" | "ai"}
+              content={item.content}
+              isStreaming={
+                isLoading &&
+                index === messages.length - 1 &&
+                item.role === "assistant"
+              }
+            />
+          </View>
         )}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.messagesList}
