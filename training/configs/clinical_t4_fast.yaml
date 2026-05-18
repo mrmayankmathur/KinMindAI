@@ -71,5 +71,5 @@ eval:
 
 huggingface:
   # Push to a -fast suffix so smoke runs never overwrite a real model.
-  push_repo: "sobahealth/sobahealth-clinical-fast"
+  push_repo: "themihirmathur/sobahealth-clinical-fast"
   push_private: true

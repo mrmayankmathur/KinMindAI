@@ -55,5 +55,5 @@ output:
 
 # Set in Kaggle Secrets, then loaded in the notebook.
 huggingface:
-  push_repo: "sobahealth/sobahealth-clinical"  # change to your namespace
+  push_repo: "themihirmathur/sobahealth-clinical"
   push_private: true
