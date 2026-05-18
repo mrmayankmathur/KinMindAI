@@ -3,10 +3,10 @@ import { View, Text, StyleSheet } from 'react-native';
 import { Colors, Spacing, Typography, BorderRadius } from '../constants/theme';
 
 interface Props {
-  status: 'connected' | 'disconnected';
+  status?: 'connected' | 'disconnected';
 }
 
-export function ConnectionBadge({ status }: Props) {
+export function ConnectionBadge({ status = 'connected' }: Props) {
   const isConnected = status === 'connected';
   
   return (
