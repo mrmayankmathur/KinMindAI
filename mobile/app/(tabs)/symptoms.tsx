@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef } from "react";
 import {
   View,
   Text,
@@ -20,7 +20,7 @@ import { useRouter } from 'expo-router';
 
 interface SymptomMessage {
   id: string;
-  role: 'user' | 'assistant';
+  role: "user" | "assistant";
   content: string;
   reasoning?: string;
   extractedData?: {
@@ -32,7 +32,7 @@ interface SymptomMessage {
 export default function SymptomsScreen() {
   const router = useRouter();
   const [messages, setMessages] = useState<SymptomMessage[]>([]);
-  const [input, setInput] = useState('');
+  const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const flatListRef = useRef<FlatList>(null);
 
@@ -40,11 +40,11 @@ export default function SymptomsScreen() {
     const msgText = text || input.trim();
     if (!msgText || isLoading) return;
 
-    setInput('');
+    setInput("");
 
     const userMsg: SymptomMessage = {
       id: Date.now().toString(),
-      role: 'user',
+      role: "user",
       content: msgText,
     };
 
@@ -60,18 +60,24 @@ export default function SymptomsScreen() {
       }));
 
       // Use actual reasoning and extraction from the API response
-      const response = await checkSymptoms(apiMessages, 'en');
+      const response = await checkSymptoms(apiMessages, "en");
 
       const assistantMsg: SymptomMessage = {
         id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: response.response || "How long have you had this? Is it accompanied by anything else?",
+        role: "assistant",
+        content:
+          response.response ||
+          "How long have you had this? Is it accompanied by anything else?",
         reasoning: response.reasoning,
         extractedData: response.extracted_data,
       };
 
       setMessages((prev) => [...prev, assistantMsg]);
-      setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
+      setTimeout(
+        () => flatListRef.current?.scrollToEnd({ animated: true }),
+        100,
+      );
+      awardXP(20, "symptom");
     } catch (e: any) {
       const friendly = describeInferenceError(e);
       const errMsg: SymptomMessage = {
@@ -89,7 +95,7 @@ export default function SymptomsScreen() {
   }
 
   function renderMessage({ item }: { item: SymptomMessage }) {
-    const isUser = item.role === 'user';
+    const isUser = item.role === "user";
 
     return (
       <View style={styles.messageWrapper}>
@@ -99,15 +105,24 @@ export default function SymptomsScreen() {
           </View>
         ) : (
           <View style={styles.assistantWrapper}>
-            {item.reasoning && <ThinkingBlock reasoning_text={item.reasoning} />}
-            
+            {item.reasoning && (
+              <ThinkingBlock reasoning_text={item.reasoning} />
+            )}
+
             {item.extractedData && (
               <View style={styles.extractedBox}>
-                <Text style={styles.extractedTitle}>[Extracted Data Preview]</Text>
-                <Text style={styles.extractedItem}>• Primary: {item.extractedData.primary}</Text>
-                {item.extractedData.associated && item.extractedData.associated.length > 0 && (
-                  <Text style={styles.extractedItem}>• Associated: {item.extractedData.associated.join(', ')}</Text>
-                )}
+                <Text style={styles.extractedTitle}>
+                  [Extracted Data Preview]
+                </Text>
+                <Text style={styles.extractedItem}>
+                  • Primary: {item.extractedData.primary}
+                </Text>
+                {item.extractedData.associated &&
+                  item.extractedData.associated.length > 0 && (
+                    <Text style={styles.extractedItem}>
+                      • Associated: {item.extractedData.associated.join(", ")}
+                    </Text>
+                  )}
               </View>
             )}
 
@@ -123,7 +138,7 @@ export default function SymptomsScreen() {
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
       {/* Header */}
       <View style={styles.header}>
@@ -135,9 +150,15 @@ export default function SymptomsScreen() {
 
       {messages.length === 0 ? (
         <View style={styles.emptyState}>
-          <Activity size={48} color={Colors.primary} style={{ marginBottom: Spacing.md }} />
+          <Activity
+            size={48}
+            color={Colors.primary}
+            style={{ marginBottom: Spacing.md }}
+          />
           <Text style={styles.emptyTitle}>What's bothering you?</Text>
-          <Text style={styles.emptySubtitle}>e.g., I have a headache and fever</Text>
+          <Text style={styles.emptySubtitle}>
+            e.g., I have a headache and fever
+          </Text>
         </View>
       ) : (
         <FlatList
@@ -169,7 +190,10 @@ export default function SymptomsScreen() {
             editable={!isLoading}
           />
           <TouchableOpacity
-            style={[styles.submitButton, (!input.trim() || isLoading) && styles.submitButtonDisabled]}
+            style={[
+              styles.submitButton,
+              (!input.trim() || isLoading) && styles.submitButtonDisabled,
+            ]}
             onPress={() => handleSend()}
             disabled={!input.trim() || isLoading}
           >
@@ -195,8 +219,8 @@ const styles = StyleSheet.create({
     borderBottomColor: Colors.border,
   },
   headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: Spacing.md,
   },
   headerTitle: {
@@ -205,8 +229,8 @@ const styles = StyleSheet.create({
   },
   emptyState: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     padding: Spacing.xl,
   },
   emptyTitle: {
@@ -217,7 +241,7 @@ const styles = StyleSheet.create({
   emptySubtitle: {
     ...Typography.bodyPrimary,
     color: Colors.textSecondary,
-    textAlign: 'center',
+    textAlign: "center",
   },
   messagesList: {
     paddingHorizontal: Spacing.base,
@@ -228,18 +252,18 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.lg,
   },
   assistantWrapper: {
-    alignItems: 'flex-start',
-    maxWidth: '90%',
+    alignItems: "flex-start",
+    maxWidth: "90%",
   },
   messageBubble: {
     padding: Spacing.md,
     borderRadius: BorderRadius.lg,
   },
   userBubble: {
-    alignSelf: 'flex-end',
+    alignSelf: "flex-end",
     backgroundColor: Colors.primary,
     borderBottomRightRadius: 4,
-    maxWidth: '80%',
+    maxWidth: "80%",
   },
   assistantBubble: {
     backgroundColor: Colors.surface,
@@ -249,7 +273,7 @@ const styles = StyleSheet.create({
   },
   userText: {
     ...Typography.bodyPrimary,
-    color: '#FFFFFF',
+    color: "#FFFFFF",
   },
   assistantText: {
     ...Typography.bodyPrimary,
@@ -262,11 +286,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.borderLight,
     marginBottom: Spacing.sm,
-    width: '100%',
+    width: "100%",
   },
   extractedTitle: {
     ...Typography.micro,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     color: Colors.textSecondary,
     marginBottom: Spacing.xs,
   },
@@ -280,8 +304,8 @@ const styles = StyleSheet.create({
     borderTopColor: Colors.border,
   },
   loadingIndicator: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: Spacing.base,
     paddingTop: Spacing.sm,
     gap: Spacing.sm,
@@ -291,8 +315,8 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
   },
   inputBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: Spacing.base,
     paddingVertical: Spacing.sm,
     gap: Spacing.sm,
@@ -316,8 +340,8 @@ const styles = StyleSheet.create({
     height: 44,
     borderRadius: 22,
     backgroundColor: Colors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     ...Shadows.sm,
   },
   submitButtonDisabled: {

@@ -140,6 +140,7 @@ export default function ChatScreen() {
         () => flatListRef.current?.scrollToEnd({ animated: true }),
         100,
       );
+      awardXP(10, "chat");
     } catch (e: any) {
       console.warn(e);
       showInferenceError(e, router);
